@@ -14,7 +14,9 @@ module tb_vocabulary_epoch;
         .tables_valid(tables_valid),.datapath_idle(datapath_idle),.admit_sequences(admit),
         .cfg_unlock(cfg_unlock),.epoch(epoch),.vocabulary_valid(vocab_valid),
         .protocol_error(protocol_error),.draining(draining));
-    programmable_small_table table_i (
+    programmable_table_ram #(
+        .DATA_WIDTH(32),.ADDR_WIDTH(8),.READ_LATENCY(1),.MEMORY_PRIMITIVE("distributed")
+    ) table_i (
         .clk(clk),.rst(rst),.cfg_unlock(cfg_unlock),.cfg_valid(cfg_valid),.cfg_ready(cfg_ready),
         .cfg_addr(cfg_addr),.cfg_data(cfg_data),.rd_valid(rd_valid),.rd_ready(rd_ready),
         .rd_addr(rd_addr),.rsp_valid(rsp_valid),.rsp_data(rsp_data));
@@ -40,7 +42,7 @@ module tb_vocabulary_epoch;
     task automatic read_entry(input [31:0] expected);
         @(negedge clk);rd_valid=1;rd_addr=7;
         tick();
-        if(!rsp_valid || rsp_data!==expected) $fatal(1,"Distributed RAM read mismatch");
+        if(!rsp_valid || rsp_data!==expected) $fatal(1,"Table read mismatch");
         @(negedge clk);rd_valid=0;
     endtask
     initial begin
@@ -82,7 +84,7 @@ module tb_vocabulary_epoch;
         if(admit || vocab_valid || cfg_unlock || epoch!=2) $fatal(1,"Aborted partial image reenabled traffic");
         start_update();write_entry(32'hcafef00d);valid_commit();read_entry(32'hcafef00d);
         if(epoch!=3) $fatal(1,"Recovery epoch failed");
-        $display("PASS: quiesce/drain, invalid commits, atomic model epochs, abort/recovery, native distributed RAM reload");
+        $display("PASS: quiesce/drain, invalid commits, atomic model epochs, abort/recovery, table reload");
         $finish;
     end
     initial begin #100000;$fatal(1,"Timeout");end
