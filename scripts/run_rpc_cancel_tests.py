@@ -47,7 +47,7 @@ def main():
     from cocotb_tools.runner import get_runner
     sys.path.insert(0,str(root/'sim/cocotb'));inputs=json.loads((root/'inputs.json').read_text())
     assert all(sha(source_path(root, n))==h for n,h in inputs.items())
-    top='cocotb_rpc_cancel_top';test='test_rpc_cancel_directed'if args.directed else'test_rpc_cancel_matrix'
+    top='cocotb_rpc_cancel_top';test='test_rpc_cancel_directed'if args.directed else'test_rpc_durable_response'
     build=root/'build/test';build.mkdir(parents=True,exist_ok=True);runner=get_runner('icarus')
     record=dict(phase='building',test_module=test,input_sha256=inputs,started_utc=datetime.now(timezone.utc).isoformat())
     try:
@@ -55,7 +55,7 @@ def main():
             hdl_toplevel=top,defines={'PARSER_PORTABLE_SIM':1},build_dir=build,always=True,log_file=build/'build.log')
         record['phase']='running'
         runner.test(hdl_toplevel=top,test_module=test,test_dir=build,build_dir=build,results_xml=build/'results.xml',
-            extra_env={'PARSER_RPC_RESPONSE_FIXTURES':str(root/'build/rpc-grpc-fixtures')},log_file=build/'simulation.log')
+            extra_env={'PARSER_RPC_RESPONSE_FIXTURES':str(root/'build/rpc-grpc-fixtures'),'PARSER_RPC_WINDOW_MODE':'cancel'},log_file=build/'simulation.log')
         xml=ET.parse(build/'results.xml');assert len(xml.findall('.//testcase'))==1 and not xml.findall('.//failure')and not xml.findall('.//error')
         accepted=json.loads((build/'acceptance.json').read_text());assert accepted['phase']=='passed'
         assert all(sha(source_path(root, n))==h for n,h in inputs.items())

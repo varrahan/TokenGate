@@ -12,18 +12,27 @@ from generate_two_fpga_application import MEMORY, instance, named_instance
 from rtl_paths import source_path
 
 
+RETURN_SELECTION = ('`ifdef PARSER_RPC_KEYED\nrpc_grpc_keyed_return\n'
+                    '`else\nrpc_grpc_durable_return\n`endif\n')
+
+
+def keyed_harness(source):
+    return once(source, RETURN_SELECTION, 'rpc_grpc_keyed_return ').replace(
+        'module cocotb_rpc_durable_top;', 'module cocotb_rpc_keyed_top;')
+
+
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--keyed',action='store_true')
     args = parser.parse_args(); root = Path(__file__).resolve().parents[1]
-    return_top='rpc_grpc_keyed_return'if args.keyed else'rpc_grpc_durable_return'
-    harness_top='cocotb_rpc_keyed_top'if args.keyed else'cocotb_rpc_durable_top'
+    return_top='rpc_grpc_durable_return'
+    harness_top='cocotb_rpc_durable_top'
     base = root / 'build/rpc-durable-base-harness.sv'
     subprocess.run([sys.executable, str(root / 'tools/generate_cocotb_rpc_leased_harness.py'), '--output', str(base)], check=True)
     source = base.read_text().replace('module cocotb_rpc_leased_top;', f'module {harness_top};')
     start, end, parameters, connections = instance(source, 'rpc_grpc_leased_return', 'dut')
     old = ports((source_path(root, 'rtl/rpc_grpc_leased_return.v')).read_text(), 'rpc_grpc_leased_return')
     new = ports((source_path(root, f'rtl/{return_top}.v')).read_text(), return_top)
+    assert new == ports(source_path(root, 'rtl/rpc_grpc_keyed_return.v').read_text(), 'rpc_grpc_keyed_return')
     original_names = {n for _, _, n in old}; new_names = {n for _, _, n in new}
     connections = {n: value for n, value in connections.items() if n in new_names}
     extra = []
@@ -64,20 +73,8 @@ def main():
         'assign all_addr[92+:23]=mem_addr[46+:23];assign all_bytes[16+:4]=mem_bytes[8+:4];',
         'assign all_data[288+:72]=mem_data[144+:72];assign all_rsp_ready[4]=mem_rsp_ready[2];',
         'assign all_valid[3]=program_valid;']))
+    source = once(source, 'rpc_grpc_durable_return #', RETURN_SELECTION + '#')
     args.output.write_text(source)
-    if args.keyed:
-        test=(root/'sim/cocotb/test_rpc_durable_response.py').read_text()
-        test=test.replace('class DurableBench(', 'class KeyedBench(').replace('exercise_rpc_fixture(d, DurableBench)', 'exercise_rpc_fixture(d, KeyedBench)')
-        test=once(test,'async def actual_rpc_progress_then_durable_credit_and_data(d):', 'async def actual_keyed_rpc_progress_credit_and_data(d):')
-        test=once(test,'self.contexts = set(); self.credit_job = 0; self.credit_fault_active = False',
-            'self.contexts = set(); self.credit_job = 0; self.credit_fault_active = False; self.keyed_updates = 0')
-        test=once(test,'d = self.d; a = self.a\n        self.set(window_req_op=op,',
-            'd = self.d; a = self.a\n        if op==2:op=9;self.keyed_updates+=1\n        self.set(window_req_op=op,')
-        test=once(test,"window_req_generation=binding.get('generation', 0),", "window_req_generation=0 if op==9 else binding.get('generation', 0),")
-        test=once(test,"window_req_record_address=a['stream_base'] + binding.get('slot', 0) * 128,", "window_req_record_address=0 if op==9 else a['stream_base'] + binding.get('slot', 0) * 128,")
-        test=once(test,"post_commit_credit_fault_cases=2, complete_model_prefix_immutable=True,", 
-            'post_commit_credit_fault_cases=2, complete_model_prefix_immutable=True,\n        key_only_window_updates=bench.keyed_updates, actual_keyed_window_update_commands=True,')
-        (root/'sim/cocotb/test_rpc_keyed_response.py').write_text('# Generated from the full durable RPC matrix; control updates use wire keys.\n'+test)
     print('Generated actual RPC/durable windows + remote inverse + five real fabric clients')
 
 

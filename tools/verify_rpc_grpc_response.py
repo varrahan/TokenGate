@@ -148,7 +148,10 @@ def main():
             'grpc_pool_locked_stream_store','grpc_stream_store'} if args.keyed_return else
             {'http2_durable_frame_grants','http2_owned_lifecycle_windows','http2_lifecycle_send_window_store',
             'grpc_pool_locked_stream_store','grpc_stream_store'}) <= parser_dependencies.keys()
-        harness=(executed/('sim/cocotb_rpc_keyed_top.sv'if args.keyed_return else'sim/cocotb_rpc_durable_top.sv')).read_text()
+        harness_path=executed/'sim/cocotb_rpc_durable_top.sv'
+        if args.keyed_return and (executed/'sim/cocotb_rpc_keyed_top.sv').is_file():
+            harness_path=executed/'sim/cocotb_rpc_keyed_top.sv'
+        harness=harness_path.read_text()
         assert 'grpc_stream_store registry(' not in harness and 'external_memory_fabric #(.CLIENTS(5))' in harness
         source=(executed/f'rtl/{top}.v').read_text()
         assert '.rst(rst)' in source and '.rst(rst||kill_ungranted)' not in source

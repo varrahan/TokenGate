@@ -2,12 +2,12 @@
 import cocotb
 from cocotb.triggers import RisingEdge
 from test_http2_prefill import value
-from progress_ledger_window_witness import ProgressLedgerWindowWitness as WindowFormatWitness
+from window_format_witness import WindowFormatWitness
 
 
 class ProgressFormatWitness(WindowFormatWitness):
     def __init__(self,d):
-        super().__init__(d);self.progress_records=[];self.progress_active=None;self.progress_pending=None
+        super().__init__(d,progress_errors=True);self.progress_records=[];self.progress_active=None;self.progress_pending=None
 
     async def observe_progress(self):
         d=self.d;c=d.dut.core;owned=c.reverse.directory_service.owned

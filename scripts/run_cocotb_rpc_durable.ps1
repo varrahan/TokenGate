@@ -19,8 +19,7 @@ if($Keyed) {
     & $referencePython (Join-Path $workspacePath 'tools\generate_rpc_durable_return.py') --keyed
     if($LASTEXITCODE -ne 0) { throw 'Keyed RPC generation failed' }
 }
-$harnessArguments=@('--output',(Join-Path $workspacePath ('sim\cocotb_'+$suiteName+'_top.sv')))
-if($Keyed){$harnessArguments+='--keyed'}
+$harnessArguments=@('--output',(Join-Path $workspacePath 'sim\cocotb_rpc_durable_top.sv'))
 & $referencePython (Join-Path $workspacePath 'tools\generate_cocotb_rpc_durable_harness.py') @harnessArguments
 if($LASTEXITCODE -ne 0) { throw 'RPC durable harness generation failed' }
 & $referencePython (Join-Path $workspacePath 'tools\generate_rpc_grpc_vectors.py') --output (Join-Path $workspacePath 'build\rpc-grpc-fixtures')

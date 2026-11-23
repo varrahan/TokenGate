@@ -38,14 +38,15 @@ def main():
             assumptions=[base>=0,base<2**width,capacity>=256,capacity<2**(width+1),
                 owner>=0,owner<2**user_width,floor>=0,floor<2**width,base>=floor,
                 end<=2**width,limit<=end]
-            solver=z3.Solver();solver.add(*assumptions)
+            solver=z3.Solver();solver.set(timeout=10000);solver.add(*assumptions)
             assert solver.check()==z3.sat,'Accepted geometry must be feasible'
-            raw=z3.BV2Int(z3.Int2BV(full,width))
-            warning_expr=z3.Extract(width-1,0,z3.ZeroExt(32-width,z3.Int2BV(full,width))+z3.BitVecVal(160,32))
+            raw=full%(2**width)
+            warning_expr=((raw+160)%(2**32))%(2**width)
             bad=z3.Or(full<0,full>=2**width,full>=2**64,limit>=2**64,end>=2**64,
-                raw!=full,z3.BV2Int(warning_expr)!=full+160,full+8>limit,full+168>limit,full+168>2**width)
+                raw!=full,warning_expr!=full+160,full+8>limit,full+168>limit,full+168>2**width)
             solver.add(bad)
-            assert solver.check()==z3.unsat,(width,user_width,solver.model())
+            outcome=solver.check()
+            assert outcome==z3.unsat,(width,user_width,str(outcome))
             cases.append(dict(address_width=width,user_width=user_width,accepted_geometry_feasible=True,address_violation='unsat'))
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     result=dict(phase='classifier_accepted_geometry_address_bounds_proven',verified_utc=datetime.now(timezone.utc).isoformat(),
@@ -53,7 +54,7 @@ def main():
         source_expressions_checked=premises,supported_parameter_combinations=len(cases),cases=cases,
         raw_address_exact=True,high_water_address_exact=True,eight_byte_reads_within_256_byte_context=True,
         address_width_warnings_reviewed=2,production_sources_changed=False,
-        scope='Address arithmetic under accepted geometry; not whole-module temporal formal verification',full_system_complete=False)
+        encoding='Exact unsigned fixed-width arithmetic expressed with integer modulo',scope='Address arithmetic under accepted geometry; not whole-module temporal formal verification',full_system_complete=False)
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     target=root/'build/validation/classifier-address-bounds-evidence'/result['key'];target.mkdir(parents=True,exist_ok=False)
     shutil.copy2(source,target/source.name);shutil.copy2(Path(__file__),target/Path(__file__).name)

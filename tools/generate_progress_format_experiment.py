@@ -122,7 +122,6 @@ end
     (folder/'case-generation.json').write_text(json.dumps(dict(generator_sha256=sha(Path(__file__)),
         source_sha256=sha(fixture),fixture_sha256=sha(output),host_supplies_progress_geometry_before_format=True,
         witness_sha256=sha(root/'sim/cocotb/progress_format_witness.py'),
-        ledger_witness_sha256=sha(root/'sim/cocotb/progress_ledger_window_witness.py'),
         base_witness_sha256=sha(root/'sim/cocotb/window_format_witness.py')),indent=2)+'\n')
     print(target)
 

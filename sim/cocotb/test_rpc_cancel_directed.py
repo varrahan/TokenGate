@@ -9,15 +9,15 @@ from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge,RisingEdge
 from hyperframe.frame import DataFrame,Frame,PingFrame
 
-from test_rpc_keyed_response import KeyedBench
+from test_rpc_durable_response import WindowedBench
 from test_rpc_response import RESULTS,val
 from test_tokenizer_mmio import cycles
 from test_tokenizer_mmio_system import Memory
 
 
-class Bench(KeyedBench):
+class Bench(WindowedBench):
     def __init__(self,*args):
-        super().__init__(*args);self.count=[0]*5;self.trace=[];self.pending=[None]*5
+        super().__init__(*args,keyed=True);self.count=[0]*5;self.trace=[];self.pending=[None]*5
         self.wire=[];self.bow_bytes=0;self.data_beats=0;self.grants=[];self.ready_wire=True;self.held_cycles=0
         self.gpu_accepted=self.directory_accepted=0;self.packet=bytearray();self.outstanding=None;self.progress_acks=0
 

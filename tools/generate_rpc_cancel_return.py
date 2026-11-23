@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from generate_bidirectional_application import ports
+from generate_cocotb_rpc_durable_harness import keyed_harness
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import add_ports,instance,named_instance,rename
 
@@ -162,8 +163,8 @@ end
         'saved_closed_pool_base<=closing_pool_base;saved_closed_pool_bytes<=closing_pool_bytes;'+''.join(scope_commit))
     text=text[:end]+body+text[end:];emit('rpc_grpc_cancellable_return',text)
 
-    harness_path=root/'sim/cocotb_rpc_keyed_top.sv';sources.append(harness_path)
-    harness=harness_path.read_text().replace('module cocotb_rpc_keyed_top;', 'module cocotb_rpc_cancel_top;')
+    harness_path=root/'sim/cocotb_rpc_durable_top.sv';sources.append(harness_path)
+    harness=keyed_harness(harness_path.read_text()).replace('module cocotb_rpc_keyed_top;', 'module cocotb_rpc_cancel_top;')
     start,end,params,connections=instance(harness,'rpc_grpc_keyed_return','dut')
     existing=set(connections);declarations=[]
     for d,w,n in ports(text,'rpc_grpc_cancellable_return'):
@@ -172,10 +173,6 @@ end
             declarations.append(f'{"reg"if d=="input"else"wire"} {w} {n}{initial if d=="input"else""};')
     harness=harness[:start]+'\n'.join(declarations)+'\n'+named_instance('rpc_grpc_cancellable_return',params,'dut',connections)+harness[end:]
     p=root/'sim/cocotb_rpc_cancel_top.sv';p.write_text(harness);targets.append(p)
-    matrix=root/'sim/cocotb/test_rpc_keyed_response.py';sources.append(matrix)
-    test=matrix.read_text().replace('class KeyedBench(', 'class CancelBench(').replace('exercise_rpc_fixture(d, KeyedBench)', 'exercise_rpc_fixture(d, CancelBench)')
-    test=test.replace('async def actual_keyed_rpc_progress_credit_and_data(d):','async def actual_cancellable_rpc_preserves_full_native_matrix(d):')
-    p=root/'sim/cocotb/test_rpc_cancel_matrix.py';p.write_text('# Generated full native RPC matrix for the cancellable service.\n'+test);targets.append(p)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/rpc-cancel-return-generation.json').write_text(json.dumps(dict(
         phase='generated_actual_cancellable_rpc_return',input_sha256={source_relative(p, root).as_posix():sha(p)for p in[*sources,Path(__file__)]},

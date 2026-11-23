@@ -173,20 +173,21 @@ def main():
                     'http2_owned_lifecycle_windows','http2_lifecycle_send_window_store',
                     'http2_durable_frame_grants','rpc_grpc_durable_return'))
                 top='cocotb_rpc_durable_top';module='test_rpc_durable_response'
+                extra_env['PARSER_RPC_WINDOW_MODE']='durable'
                 sources.append(source_path(root, 'sim/'+top+'.sv'))
                 extra_sources.extend(source_path(root, name) for name in('tools/generate_pool_locked_store.py',
                     'tools/generate_owned_send_windows.py','tools/generate_lifecycle_send_windows.py',
                     'tools/generate_durable_window_framer.py','tools/generate_rpc_durable_return.py',
                     'tools/generate_cocotb_rpc_durable_harness.py'))
             if args.suite=='rpc_keyed':
-                replaced={'cocotb_rpc_durable_top.sv','http2_owned_lifecycle_windows.v',
+                replaced={'http2_owned_lifecycle_windows.v',
                     'http2_lifecycle_send_window_store.v','http2_durable_frame_grants.v','rpc_grpc_durable_return.v'}
                 sources=[p for p in sources if p.name not in replaced]
                 sources.extend(source_path(root, 'rtl/'+name+'.v')for name in('http2_owned_keyed_windows',
                     'http2_keyed_send_window_store','http2_keyed_frame_grants','rpc_grpc_keyed_return'))
-                top='cocotb_rpc_keyed_top';module='test_rpc_keyed_response'
-                sources.append(source_path(root, 'sim/'+top+'.sv'))
-                extra_sources.extend(source_path(root, name) for name in('tools/generate_keyed_send_windows.py','sim/cocotb/test_rpc_durable_response.py'))
+                defines['PARSER_RPC_KEYED']=1
+                extra_env['PARSER_RPC_WINDOW_MODE']='keyed'
+                extra_sources.append(root/'tools/generate_keyed_send_windows.py')
                 extra_sources.append(root/'tools/generate_registered_window_geometry.py')
     if shutdown_suite:
         top='cocotb_two_fpga_shutdown_top';module='test_two_fpga_shutdown'

@@ -262,7 +262,12 @@ wire [7:0] result_credit_status;
 wire [7:0] result_credit_detail;
 wire [31:0] result_credit_http2_error;
 wire  result_credit_connection_error;
-rpc_grpc_durable_return #(.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)) dut(
+`ifdef PARSER_RPC_KEYED
+rpc_grpc_keyed_return
+`else
+rpc_grpc_durable_return
+`endif
+#(.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)) dut(
     .clk(clk),
     .rst(rst),
     .s_axis_tokens_tdata(s_axis_tokens_tdata),

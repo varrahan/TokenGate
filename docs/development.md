@@ -43,6 +43,14 @@ flat logical `rtl/<module>.v` names; [`rtl_paths.py`](../tools/rtl_paths.py)
 resolves those names against either the maintained hierarchy or a frozen bundle.
 This keeps existing source manifests and isolated RTL overrides usable.
 
+The durable, keyed, and cancellable RPC response matrices share
+[`test_rpc_durable_response.py`](../sim/cocotb/test_rpc_durable_response.py).
+The runners select `PARSER_RPC_WINDOW_MODE=durable`, `keyed`, or `cancel` and
+retain the same native-reference, capacity, backpressure, and fault cases.
+`rpc_durable` and `rpc_keyed` also share one SV harness; the keyed runner sets
+`PARSER_RPC_KEYED` when compiling it. The RPC generators create harnesses and fixtures
+without copying Python test files into new variants.
+
 ## Linux RTL tests
 
 The suite list and exact compile inputs are maintained in

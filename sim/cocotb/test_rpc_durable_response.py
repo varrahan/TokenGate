@@ -10,9 +10,10 @@ from test_rpc_grpc_response import FramedBench
 from test_tokenizer_mmio import cycles
 
 
-class DurableBench(FramedBench):
-    def __init__(self, d, reference, memory):
+class WindowedBench(FramedBench):
+    def __init__(self, d, reference, memory, *, keyed=False):
         super().__init__(d, reference, memory, response=d.dut.response)
+        self.keyed = keyed; self.keyed_updates = 0
         self.context_base = 0x780000; self.context_bytes = 4096
         self.window_base = 0x781000; self.window_bytes = 64
         self.contexts = set(); self.credit_job = 0; self.credit_fault_active = False
@@ -46,10 +47,12 @@ class DurableBench(FramedBench):
 
     async def window(self, op, binding, amount=0):
         d = self.d; a = self.a
+        if self.keyed and op == 2:
+            op = 9; self.keyed_updates += 1
         self.set(window_req_op=op, window_req_maintenance=int(op in (0, 7)), window_req_user=binding['user'],
             window_req_stream=0 if op in (0, 3, 4, 7) else binding.get('stream', 0),
-            window_req_generation=binding.get('generation', 0),
-            window_req_record_address=a['stream_base'] + binding.get('slot', 0) * 128, window_req_amount=amount,
+            window_req_generation=0 if op == 9 else binding.get('generation', 0),
+            window_req_record_address=0 if op == 9 else a['stream_base'] + binding.get('slot', 0) * 128, window_req_amount=amount,
             window_cfg_context_base=self.context_base, window_cfg_context_bytes=self.context_bytes,
             window_cfg_stream_base=a['stream_base'], window_cfg_stream_bytes=a['stream_bytes'],
             window_cfg_window_base=self.window_base, window_cfg_window_bytes=self.window_bytes,
@@ -222,9 +225,17 @@ class DurableBench(FramedBench):
                 checkpoint = self.cases
 
 
-@cocotb.test(timeout_time=100, timeout_unit='ms')
+WINDOW_MODE = os.environ.get('PARSER_RPC_WINDOW_MODE', 'durable')
+TEST_NAMES = {
+    'durable': 'actual_rpc_progress_then_durable_credit_and_data',
+    'keyed': 'actual_keyed_rpc_progress_credit_and_data',
+    'cancel': 'actual_cancellable_rpc_preserves_full_native_matrix',
+}
+
+
+@cocotb.test(name=TEST_NAMES[WINDOW_MODE], timeout_time=100, timeout_unit='ms')
 async def actual_rpc_progress_then_durable_credit_and_data(d):
-    bench = await exercise_rpc_fixture(d, DurableBench)
+    bench = await exercise_rpc_fixture(d, lambda *args: WindowedBench(*args, keyed=WINDOW_MODE != 'durable'))
     generation = 90000
     async def fresh(mode=1):
         nonlocal generation
@@ -243,7 +254,7 @@ async def actual_rpc_progress_then_durable_credit_and_data(d):
     assert bench.durable_grants and bench.park_cycles and bench.poisoned_configs == bench.cases
     baseline = json.loads(Path('acceptance.json').read_text())
     report = dict(baseline)
-    report.update(phase='passed', cases=bench.cases, successes=bench.successes, rejections=bench.rejections,
+    report.update(phase='passed', window_mode=WINDOW_MODE, cases=bench.cases, successes=bench.successes, rejections=bench.rejections,
         injected_faults=bench.faults, fenced_global_resets=bench.resets, clock_cycles=bench.clocks,
         baseline_rpc_matrix=baseline, capacity_cases=4, transport_quarantine_cases=3,
         commands=bench.commands + [len(bench.window_trace)],
@@ -263,5 +274,7 @@ async def actual_rpc_progress_then_durable_credit_and_data(d):
         private_rejection_does_not_reset_directory=True, directory_held_through_public_ack_verified=True,
         post_commit_credit_fault_cases=2, complete_model_prefix_immutable=True,
         raw_http2_control_integrated=False, full_transport_verified=False, full_system_verified=False)
+    if bench.keyed:
+        report.update(key_only_window_updates=bench.keyed_updates, actual_keyed_window_update_commands=True)
     Path('acceptance.json').write_text(json.dumps(report, indent=2) + '\n')
     d._log.info('PASS: %s', report)

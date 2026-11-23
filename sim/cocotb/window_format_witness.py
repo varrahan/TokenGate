@@ -7,8 +7,9 @@ class WindowFormatWitness:
     fields=('control_status','control_detail','control_memory_status','control_result_op',
             'control_result_user','control_result_stream','control_result_generation','control_result_address')
 
-    def __init__(self,d):
+    def __init__(self,d,*,progress_errors=False):
         self.d=d;self.clock=0;self.active=None;self.pending={};self.records=[]
+        self.progress_errors=progress_errors
 
     async def observe(self):
         d=self.d;c=d.dut.core;owned=c.reverse.directory_service.owned
@@ -64,6 +65,10 @@ class WindowFormatWitness:
                     if result[0]==0:
                         for key in ('26','22'):
                             assert len(r['acks'][key])*8==r['sizes'][key] and all(a['status']==0 for a in r['acks'][key])
+                    elif self.progress_errors and result[:3]==(5,18,0x75):
+                        for key in ('26','22'):
+                            assert len(r['acks'][key])*8==r['sizes'][key]
+                            assert all(a['status']==0 for a in r['acks'][key])
                     elif result[2]==0x75:
                         failed=[key for key in ('26','22') if r['acks'][key] and r['acks'][key][-1]['status']==0x75]
                         assert len(failed)==1

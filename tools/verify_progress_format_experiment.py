@@ -21,7 +21,6 @@ def main():
     generation=json.loads((folder/'generation.json').read_text())
     cases=json.loads((folder/'case-generation.json').read_text())
     faults=json.loads((folder/'faults/generation.json').read_text())
-    ledger=json.loads((folder/'ledger-witness-generation.json').read_text())
     executions={};parser_hashes=None
     for label,name,profile in (('retained_native','progress_format_retained_native_authority_v2','native'),
         ('all_ledger_faults','progress_format_all_ledger_ack_faults_v2','shutdown-faults')):
@@ -33,7 +32,6 @@ def main():
             assert record['inputs_sha256'][n]==parent['executions']['native']['inputs_sha256'][n]
         assert record['inputs_sha256']['sim/cocotb/progress_format_witness.py']==cases['witness_sha256']==faults['witness_sha256']
         assert record['inputs_sha256']['sim/cocotb/window_format_witness.py']==cases['base_witness_sha256']
-        assert record['inputs_sha256']['sim/cocotb/progress_ledger_window_witness.py']==cases['ledger_witness_sha256']==ledger['witness_sha256']
         a=record['acceptance'];formats=a['actual_format_transactions']
         for item in formats:
             p=item['actual_progress_format']
@@ -74,15 +72,13 @@ def main():
     replay=root/'build/validation/progress-format-generation-replay'
     paths=set(generation['input_sha256'])|{'tools/generate_progress_format_experiment.py','tools/generate_progress_format_fault_case.py',
         'tools/generate_receive_pool_experiment.py','tools/generate_two_fpga_application.py','tools/generate_bidirectional_application.py',
-        'tools/generate_progress_ledger_witness.py','sim/cocotb/progress_ledger_window_witness.py',
         'sim/cocotb/progress_format_witness.py','sim/cocotb/window_format_witness.py',
         'build/experiments/retained-native-roundtrip/test_raw_grpc_enveloped.py',
         'build/experiments/window-format/sim/test_raw_shutdown_faults.py'}
     for n in paths:
         p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),p)
         assert n not in generation['input_sha256'] or sha(source_path(root, n))==generation['input_sha256'][n]
-    for generator,manifest,expected in (('generate_progress_ledger_witness.py','ledger-witness-generation.json',ledger),
-        ('generate_progress_format_experiment.py','generation.json',generation),
+    for generator,manifest,expected in (('generate_progress_format_experiment.py','generation.json',generation),
         ('generate_progress_format_fault_case.py','faults/generation.json',faults)):
         assert sha(root/'tools'/generator)==expected['generator_sha256']
         subprocess.run([sys.executable,str(replay/'tools'/generator)],check=True,capture_output=True,text=True)
