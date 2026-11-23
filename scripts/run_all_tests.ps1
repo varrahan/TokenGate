@@ -1,0 +1,22 @@
+$ErrorActionPreference='Stop'
+& (Join-Path $PSScriptRoot 'run_bridge_test.ps1')
+& (Join-Path $PSScriptRoot 'run_infrastructure_tests.ps1')
+& (Join-Path $PSScriptRoot 'run_detokenizer_test.ps1')
+& (Join-Path $PSScriptRoot 'run_bpe_test.ps1')
+& (Join-Path $PSScriptRoot 'run_codec_test.ps1')
+& (Join-Path $PSScriptRoot 'run_serializer_test.ps1')
+& (Join-Path $PSScriptRoot 'run_protobuf_test.ps1')
+& (Join-Path $PSScriptRoot 'run_json_parser_test.ps1')
+& (Join-Path $PSScriptRoot 'run_decoder_test.ps1')
+& (Join-Path $PSScriptRoot 'run_unicode_test.ps1')
+& (Join-Path $PSScriptRoot 'run_external_cache_test.ps1')
+& (Join-Path $PSScriptRoot 'run_external_detokenizer_test.ps1')
+& (Join-Path $PSScriptRoot 'run_tokenizer_memory_test.ps1')
+& (Join-Path $PSScriptRoot 'run_memory_arbiter_test.ps1')
+& (Join-Path $PSScriptRoot 'run_codepoint_test.ps1')
+& (Join-Path $PSScriptRoot 'run_splitter_test.ps1')
+& (Join-Path $PSScriptRoot 'run_pretokenizer_test.ps1')
+& (Join-Path $PSScriptRoot 'run_token_packager_test.ps1')
+$workspacePath=Split-Path -Parent $PSScriptRoot
+& (Join-Path $workspacePath '.venv312\Scripts\python.exe') -m pytest (Join-Path $workspacePath 'tests') -q --basetemp (Join-Path $workspacePath 'build\pytest-temp')
+if($LASTEXITCODE -ne 0) { throw 'Python reference tests failed' }

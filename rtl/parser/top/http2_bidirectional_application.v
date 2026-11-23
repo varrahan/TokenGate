@@ -1,0 +1,758 @@
+`timescale 1ns/1ps
+`default_nettype none
+// Generated interface wiring; arbitration below is production RTL.
+// Application bytes only: full transport, whole-RPC image leases and
+// physical PCIe/memory adapters remain required system integration.
+module http2_bidirectional_application #(
+parameter integer USER_WIDTH=16,MEMORY_ADDR_WIDTH=23,FIFO_DEPTH=16,MAX_TEXT_BYTES=16384,MAX_FIELD_BYTES=16384
+)(
+    input wire  clk,
+    input wire  rst,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_stream_base,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_stream_bytes,
+    input wire  queue_cfg_valid,
+    output wire  queue_cfg_ready,
+    input wire  queue_cfg_clear,
+    input wire  maintenance_grant,
+    input wire [MEMORY_ADDR_WIDTH-1:0] queue_cfg_base,
+    input wire [MEMORY_ADDR_WIDTH:0] queue_cfg_bytes,
+    output wire  queue_cfg_result_valid,
+    input wire  queue_cfg_result_ready,
+    output wire [7:0] queue_cfg_status,
+    input wire  control_valid,
+    output wire  control_ready,
+    input wire [2:0] control_op,
+    input wire [USER_WIDTH-1:0] control_user,
+    input wire [USER_WIDTH-1:0] control_application,
+    input wire [30:0] control_stream,
+    input wire [31:0] control_generation,
+    input wire [MEMORY_ADDR_WIDTH-1:0] control_address,
+    input wire [MEMORY_ADDR_WIDTH-1:0] control_buffer_base,
+    input wire [MEMORY_ADDR_WIDTH:0] control_buffer_bytes,
+    input wire [31:0] control_message_limit,
+    input wire  control_protobuf,
+    input wire  control_unsupported_encoding,
+    input wire  control_maintenance,
+    output wire  control_result_valid,
+    input wire  control_result_ready,
+    output wire [7:0] control_status,
+    output wire [7:0] control_detail,
+    output wire [7:0] control_memory_status,
+    output wire [2:0] control_result_op,
+    output wire [MEMORY_ADDR_WIDTH-1:0] control_result_address,
+    output wire [MEMORY_ADDR_WIDTH-1:0] control_result_buffer_base,
+    output wire [MEMORY_ADDR_WIDTH:0] control_result_buffer_bytes,
+    output wire [USER_WIDTH-1:0] control_result_user,
+    output wire [USER_WIDTH-1:0] control_result_application,
+    output wire [30:0] control_result_stream,
+    output wire [31:0] control_result_generation,
+    output wire [31:0] control_result_message_limit,
+    output wire  control_result_protobuf,
+    output wire  control_result_unsupported_encoding,
+    output wire [255:0] control_result_state,
+    output wire  packet_result_valid,
+    input wire  packet_result_ready,
+    output wire  packet_committed,
+    output wire [7:0] packet_status,
+    output wire [7:0] packet_detail,
+    output wire [7:0] packet_memory_status,
+    output wire [USER_WIDTH-1:0] packet_user,
+    output wire [31:0] packet_tag,
+    output wire  rpc_error_valid,
+    input wire  rpc_error_ready,
+    output wire [7:0] rpc_error_status,
+    output wire [7:0] rpc_error_detail,
+    output wire [7:0] rpc_error_memory_status,
+    output wire [USER_WIDTH-1:0] rpc_error_user,
+    output wire [USER_WIDTH-1:0] rpc_error_application,
+    output wire [30:0] rpc_error_stream,
+    output wire [31:0] rpc_error_generation,
+    output wire [31:0] rpc_error_packet_tag,
+    output wire  stream_recovery_required,
+    output wire [MEMORY_ADDR_WIDTH-1:0] stream_recovery_address,
+    output wire  queue_recovery_required,
+    output wire [7:0] queue_recovery_detail,
+    output wire [7:0] queue_recovery_memory_status,
+    output wire  retirement_pending,
+    output wire [31:0] queued_count,
+    output wire [31:0] pending_count,
+    input wire  admit_messages,
+    input wire  stream_cfg_valid,
+    output wire  stream_cfg_ready,
+    output wire  stream_cfg_result_valid,
+    input wire  stream_cfg_result_ready,
+    output wire [7:0] stream_cfg_status,
+    input wire  cfg_unlock,
+    input wire  cfg_schema_valid,
+    output wire  cfg_schema_ready,
+    output wire  cfg_quiescent,
+    input wire [3:0] cfg_schema_index,
+    input wire [255:0] cfg_schema_key,
+    input wire [5:0] cfg_schema_key_length,
+    input wire  cfg_schema_json_enable,
+    input wire [28:0] cfg_schema_field,
+    input wire  cfg_schema_proto_enable,
+    output wire  completion_valid,
+    input wire  completion_ready,
+    output wire [7:0] completion_status,
+    output wire [7:0] completion_detail,
+    output wire [7:0] completion_memory_status,
+    output wire [USER_WIDTH-1:0] completion_user,
+    output wire [USER_WIDTH-1:0] completion_application,
+    output wire [30:0] completion_stream,
+    output wire [31:0] completion_generation,
+    output wire [31:0] completion_ordinal,
+    output wire [31:0] completion_packet_tag,
+    output wire  payload_lease_active,
+    input wire [1:0] cfg_token_profile,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_class_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_hash_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_node_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_edge_base,
+    input wire [31:0] cfg_token_node_count,
+    input wire [31:0] cfg_token_edge_count,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_work_floor,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_scalar_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_merge_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_token_commit_base,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_token_scalar_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_token_merge_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_token_commit_bytes,
+    output wire [511:0] m_axis_tokens_tdata,
+    output wire [63:0] m_axis_tokens_tkeep,
+    output wire  m_axis_tokens_tvalid,
+    input wire  m_axis_tokens_tready,
+    output wire  m_axis_tokens_tlast,
+    output wire [USER_WIDTH-1:0] m_axis_tokens_tuser,
+    output wire [USER_WIDTH-1:0] dma_connection,
+    output wire [30:0] dma_stream,
+    output wire [31:0] dma_generation,
+    output wire [31:0] dma_ordinal,
+    output wire [31:0] dma_packet_tag,
+    output wire [31:0] completion_count,
+    output wire [7:0] completion_token_stage,
+    output wire [7:0] completion_token_detail,
+    output wire [7:0] completion_token_status,
+    input wire  admit_packets,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_context_base,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_context_bytes,
+    input wire  command_valid,
+    output wire  command_ready,
+    input wire [1:0] command_op,
+    input wire [USER_WIDTH-1:0] command_user,
+    input wire  command_server_role,
+    input wire  command_allow_push,
+    input wire [23:0] command_max_frame_bytes,
+    input wire [MEMORY_ADDR_WIDTH-1:0] command_buffer_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] command_table_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] command_scratch_base,
+    input wire [MEMORY_ADDR_WIDTH:0] command_buffer_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] command_table_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] command_scratch_bytes,
+    input wire [31:0] command_hpack_maximum,
+    input wire [31:0] command_hpack_allowed,
+    input wire [31:0] command_header_list_limit,
+    input wire [31:0] command_required_maximum,
+    input wire  command_required_update,
+    input wire [511:0] s_axis_rx_tdata,
+    input wire [63:0] s_axis_rx_tkeep,
+    input wire  s_axis_rx_tvalid,
+    output wire  s_axis_rx_tready,
+    input wire  s_axis_rx_tlast,
+    input wire [USER_WIDTH-1:0] s_axis_rx_tuser,
+    output wire  rsp_valid,
+    input wire  rsp_ready,
+    output wire  rsp_is_command,
+    output wire [1:0] rsp_command_op,
+    output wire [7:0] rsp_status,
+    output wire [7:0] rsp_detail,
+    output wire [7:0] rsp_memory_status,
+    output wire [31:0] rsp_http2_error,
+    output wire [USER_WIDTH-1:0] rsp_user,
+    input wire [31:0] s_axis_rx_tag,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_payload_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_work_floor,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_route_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_route_strings_base,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_payload_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_payload_slot_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_route_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_route_strings_bytes,
+    input wire [31:0] cfg_routes,
+    input wire [31:0] cfg_model_epoch,
+    input wire [31:0] cfg_schema_epoch,
+    output wire  header_valid,
+    input wire  header_ready,
+    output wire [3:0] header_status,
+    output wire [7:0] header_detail,
+    output wire [7:0] header_memory_status,
+    output wire [7:0] header_control_status,
+    output wire [7:0] header_cleanup_status,
+    output wire  header_connection_error,
+    output wire [31:0] header_http2_error,
+    output wire [9:0] header_http_status,
+    output wire [7:0] header_grpc_status,
+    output wire [USER_WIDTH-1:0] header_user,
+    output wire [30:0] header_stream,
+    output wire [31:0] header_generation,
+    output wire [MEMORY_ADDR_WIDTH-1:0] header_address,
+    output wire [15:0] header_application,
+    output wire [31:0] header_model_epoch,
+    output wire [31:0] header_schema_epoch,
+    output wire  header_trailers,
+    output wire  header_end_stream,
+    output wire  admission_recovery_required,
+    output wire [MEMORY_ADDR_WIDTH-1:0] admission_recovery_address,
+    output wire [USER_WIDTH-1:0] admission_recovery_user,
+    output wire  transport_recovery_required,
+    output wire [MEMORY_ADDR_WIDTH-1:0] transport_recovery_address,
+    output wire  control_event_valid,
+    input wire  control_event_ready,
+    output wire [3:0] control_event_kind,
+    output wire [31:0] control_event_arg0,
+    output wire [31:0] control_event_arg1,
+    output wire [30:0] control_event_stream,
+    output wire [USER_WIDTH-1:0] control_event_user,
+    output wire [7:0] transport_packet_status,
+    output wire [7:0] transport_packet_detail,
+    output wire [7:0] transport_packet_memory_status,
+    output wire [31:0] transport_packet_http2_error,
+    output wire  idle,
+    output wire [21:0] mem_valid,
+    input wire [21:0] mem_ready,
+    output wire [21:0] mem_write,
+    output wire [22*MEMORY_ADDR_WIDTH-1:0] mem_addr,
+    output wire [87:0] mem_bytes,
+    output wire [1583:0] mem_data,
+    input wire [21:0] mem_rsp_valid,
+    output wire [21:0] mem_rsp_ready,
+    input wire [1583:0] mem_rsp_data,
+    input wire [175:0] mem_rsp_status,
+    input wire [31:0] s_axis_generated_tdata,
+    input wire [3:0] s_axis_generated_tkeep,
+    input wire  s_axis_generated_tvalid,
+    output wire  s_axis_generated_tready,
+    input wire  s_axis_generated_tlast,
+    input wire [USER_WIDTH-1:0] s_axis_generated_tuser,
+    input wire [30:0] generated_stream,
+    input wire [31:0] generated_generation,
+    input wire [31:0] generated_model_epoch,
+    input wire [31:0] generated_schema_epoch,
+    input wire [31:0] generated_ordinal,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_response_progress_base,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_response_progress_bytes,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_response_directory_base,
+    input wire [MEMORY_ADDR_WIDTH-1:0] cfg_response_pool_base,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_response_directory_bytes,
+    input wire [MEMORY_ADDR_WIDTH:0] cfg_response_pool_bytes,
+    input wire  cfg_response_strip_special,
+    input wire  cfg_response_replace_invalid,
+    input wire [1:0] cfg_response_format,
+    input wire [28:0] cfg_response_protobuf_field,
+    output wire [511:0] m_axis_tx_tdata,
+    output wire [63:0] m_axis_tx_tkeep,
+    output wire  m_axis_tx_tvalid,
+    input wire  m_axis_tx_tready,
+    output wire  m_axis_tx_tlast,
+    output wire [USER_WIDTH-1:0] m_axis_tx_tuser,
+    output wire  response_result_valid,
+    input wire  response_result_ready,
+    output wire [7:0] response_result_stage,
+    output wire [7:0] response_result_status,
+    output wire [7:0] response_result_memory_status,
+    output wire [USER_WIDTH-1:0] response_result_user,
+    output wire [USER_WIDTH-1:0] response_result_application,
+    output wire [30:0] response_result_stream,
+    output wire [31:0] response_result_generation,
+    output wire [31:0] response_result_model_epoch,
+    output wire [31:0] response_result_schema_epoch,
+    output wire [31:0] response_result_ordinal,
+    output wire [31:0] response_result_bytes,
+    output wire  response_result_eos,
+    output wire  response_result_tx_emitted,
+    output wire  response_recovery_required,
+    output wire [MEMORY_ADDR_WIDTH-1:0] response_recovery_address,
+    output wire  response_directory_lease_active,
+    output wire  response_idle
+);
+wire  f_queue_cfg_valid;
+wire  f_queue_cfg_ready;
+wire  f_control_valid;
+wire  f_control_ready;
+wire [2:0] f_control_op;
+wire [USER_WIDTH-1:0] f_control_user;
+wire [USER_WIDTH-1:0] f_control_application;
+wire [30:0] f_control_stream;
+wire [31:0] f_control_generation;
+wire [MEMORY_ADDR_WIDTH-1:0] f_control_address;
+wire [MEMORY_ADDR_WIDTH-1:0] f_control_buffer_base;
+wire [MEMORY_ADDR_WIDTH:0] f_control_buffer_bytes;
+wire [31:0] f_control_message_limit;
+wire  f_control_protobuf;
+wire  f_control_unsupported_encoding;
+wire  f_control_maintenance;
+wire  f_control_result_valid;
+wire  f_control_result_ready;
+wire [7:0] f_control_status;
+wire [7:0] f_control_detail;
+wire [7:0] f_control_memory_status;
+wire [2:0] f_control_result_op;
+wire [MEMORY_ADDR_WIDTH-1:0] f_control_result_address;
+wire [MEMORY_ADDR_WIDTH-1:0] f_control_result_buffer_base;
+wire [MEMORY_ADDR_WIDTH:0] f_control_result_buffer_bytes;
+wire [USER_WIDTH-1:0] f_control_result_user;
+wire [USER_WIDTH-1:0] f_control_result_application;
+wire [30:0] f_control_result_stream;
+wire [31:0] f_control_result_generation;
+wire [31:0] f_control_result_message_limit;
+wire  f_control_result_protobuf;
+wire  f_control_result_unsupported_encoding;
+wire [255:0] f_control_result_state;
+wire  f_stream_cfg_valid;
+wire  f_stream_cfg_ready;
+wire  f_cfg_schema_valid;
+wire  f_cfg_schema_ready;
+wire  f_cfg_quiescent;
+wire  f_command_valid;
+wire  f_command_ready;
+wire  f_s_axis_rx_tvalid;
+wire  f_s_axis_rx_tready;
+wire  f_idle;
+wire [19:0] f_mem_valid;
+wire [19:0] f_mem_ready;
+wire [19:0] f_mem_write;
+wire [20*MEMORY_ADDR_WIDTH-1:0] f_mem_addr;
+wire [79:0] f_mem_bytes;
+wire [1439:0] f_mem_data;
+wire [19:0] f_mem_rsp_valid;
+wire [19:0] f_mem_rsp_ready;
+wire [1439:0] f_mem_rsp_data;
+wire [159:0] f_mem_rsp_status;
+wire  r_directory_valid;
+wire  r_directory_ready;
+wire [USER_WIDTH-1:0] r_directory_user;
+wire [30:0] r_directory_stream;
+wire [MEMORY_ADDR_WIDTH-1:0] r_directory_pool_base;
+wire [MEMORY_ADDR_WIDTH:0] r_directory_pool_bytes;
+wire  r_directory_result_valid;
+wire  r_directory_result_ready;
+wire [7:0] r_directory_status;
+wire [7:0] r_directory_memory_status;
+wire [MEMORY_ADDR_WIDTH-1:0] r_directory_address;
+wire [USER_WIDTH-1:0] r_directory_application;
+wire [31:0] r_directory_generation;
+wire  r_directory_protobuf;
+wire  r_directory_unsupported_encoding;
+reg [1:0] control_owner;
+reg control_sent,rx_active,owned_stream_valid,return_pending;
+reg [MEMORY_ADDR_WIDTH-1:0] pending_stream_base,owned_stream_base;
+reg [MEMORY_ADDR_WIDTH:0] pending_stream_bytes,owned_stream_bytes;
+wire reverse_admit=owned_stream_valid&&!cfg_unlock&&!control_valid&&control_owner!=1&&
+    !command_valid&&!queue_cfg_valid&&!stream_cfg_valid&&!queue_cfg_result_valid&&!stream_cfg_result_valid;
+wire reverse_input_ready;
+// Ownership begins at the public descriptor handshake and ends only at its
+// held result ACK. Do not feed the deep serializer/decoder idle reduction
+// back into ingress capture or configuration enables.
+wire allow_new_rx=!return_pending&&!(s_axis_generated_tvalid&&reverse_admit)&&control_owner!=2;
+wire allow_config=!return_pending&&control_owner!=2;
+assign f_s_axis_rx_tvalid=s_axis_rx_tvalid&&(rx_active||allow_new_rx);
+assign s_axis_rx_tready=f_s_axis_rx_tready&&(rx_active||allow_new_rx);
+assign f_command_valid=command_valid&&allow_config;
+assign command_ready=f_command_ready&&allow_config;
+assign f_stream_cfg_valid=stream_cfg_valid&&allow_config;
+assign stream_cfg_ready=f_stream_cfg_ready&&allow_config;
+assign f_queue_cfg_valid=queue_cfg_valid&&allow_config;
+assign queue_cfg_ready=f_queue_cfg_ready&&allow_config;
+assign f_cfg_schema_valid=cfg_schema_valid&&allow_config;
+assign cfg_schema_ready=f_cfg_schema_ready&&allow_config;
+assign cfg_quiescent=f_cfg_quiescent&&!return_pending&&control_owner==0;
+assign idle=f_idle&&response_idle&&control_owner==0&&!rx_active&&!s_axis_generated_tvalid;
+assign s_axis_generated_tready=reverse_input_ready&&reverse_admit;
+assign f_control_valid=!control_sent&&(control_owner==1?control_valid:control_owner==2&&r_directory_valid);
+assign control_ready=control_owner==1&&!control_sent&&f_control_ready;
+assign r_directory_ready=control_owner==2&&!control_sent&&f_control_ready;
+assign f_control_result_ready=control_owner==1?control_result_ready:control_owner==2&&r_directory_result_ready;
+assign control_result_valid=control_owner==1&&control_sent&&f_control_result_valid;
+assign r_directory_result_valid=control_owner==2&&control_sent&&f_control_result_valid;
+assign r_directory_status=f_control_status;
+assign r_directory_memory_status=f_control_memory_status;
+assign r_directory_address=f_control_result_address;
+assign r_directory_application=f_control_result_application;
+assign r_directory_generation=f_control_result_generation;
+assign r_directory_protobuf=f_control_result_protobuf;
+assign r_directory_unsupported_encoding=f_control_result_unsupported_encoding;
+always @(posedge clk)begin
+    if(rst)begin
+        control_owner<=0;control_sent<=0;rx_active<=0;owned_stream_valid<=0;return_pending<=0;
+        pending_stream_base<=0;pending_stream_bytes<=0;owned_stream_base<=0;owned_stream_bytes<=0;
+    end else begin
+        if(s_axis_rx_tvalid&&s_axis_rx_tready)rx_active<=!s_axis_rx_tlast;
+        if(s_axis_generated_tvalid&&s_axis_generated_tready)return_pending<=1;
+        if(response_result_valid&&response_result_ready)return_pending<=0;
+        if(stream_cfg_valid&&stream_cfg_ready)begin pending_stream_base<=cfg_stream_base;pending_stream_bytes<=cfg_stream_bytes;end
+        if(stream_cfg_result_valid&&stream_cfg_status==0)begin owned_stream_base<=pending_stream_base;owned_stream_bytes<=pending_stream_bytes;owned_stream_valid<=1;end
+        if(control_owner==0)begin
+            control_sent<=0;
+            if(control_valid)control_owner<=1;
+            else if(r_directory_valid)control_owner<=2;
+        end
+        if(f_control_valid&&f_control_ready)control_sent<=1;
+        if(f_control_result_valid&&f_control_result_ready)begin control_owner<=0;control_sent<=0;end
+    end
+end
+assign f_control_op=control_owner==2?3'd1:control_op;
+assign f_control_user=control_owner==2?r_directory_user:control_user;
+assign f_control_application=control_owner==2?0:control_application;
+assign f_control_stream=control_owner==2?r_directory_stream:control_stream;
+assign f_control_generation=control_owner==2?0:control_generation;
+assign f_control_address=control_owner==2?0:control_address;
+assign f_control_buffer_base=control_owner==2?0:control_buffer_base;
+assign f_control_buffer_bytes=control_owner==2?0:control_buffer_bytes;
+assign f_control_message_limit=control_owner==2?0:control_message_limit;
+assign f_control_protobuf=control_owner==2?0:control_protobuf;
+assign f_control_unsupported_encoding=control_owner==2?0:control_unsupported_encoding;
+assign f_control_maintenance=control_owner==2?0:control_maintenance;
+assign control_status=f_control_status;
+assign control_detail=f_control_detail;
+assign control_memory_status=f_control_memory_status;
+assign control_result_op=f_control_result_op;
+assign control_result_address=f_control_result_address;
+assign control_result_buffer_base=f_control_result_buffer_base;
+assign control_result_buffer_bytes=f_control_result_buffer_bytes;
+assign control_result_user=f_control_result_user;
+assign control_result_application=f_control_result_application;
+assign control_result_stream=f_control_result_stream;
+assign control_result_generation=f_control_result_generation;
+assign control_result_message_limit=f_control_result_message_limit;
+assign control_result_protobuf=f_control_result_protobuf;
+assign control_result_unsupported_encoding=f_control_result_unsupported_encoding;
+assign control_result_state=f_control_result_state;
+assign mem_valid[0+:20]=f_mem_valid;
+assign f_mem_ready=mem_ready[0+:20];
+assign mem_write[0+:20]=f_mem_write;
+assign mem_addr[0+:20*MEMORY_ADDR_WIDTH]=f_mem_addr;
+assign mem_bytes[0+:80]=f_mem_bytes;
+assign mem_data[0+:1440]=f_mem_data;
+assign f_mem_rsp_valid=mem_rsp_valid[0+:20];
+assign mem_rsp_ready[0+:20]=f_mem_rsp_ready;
+assign f_mem_rsp_data=mem_rsp_data[0+:1440];
+assign f_mem_rsp_status=mem_rsp_status[0+:160];
+http2_grpc_prefill #(.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH),.FIFO_DEPTH(FIFO_DEPTH),
+.MAX_TEXT_BYTES(MAX_TEXT_BYTES),.MAX_FIELD_BYTES(MAX_FIELD_BYTES)) forward(
+.clk(clk),
+.rst(rst),
+.cfg_stream_base(cfg_stream_base),
+.cfg_stream_bytes(cfg_stream_bytes),
+.queue_cfg_valid(f_queue_cfg_valid),
+.queue_cfg_ready(f_queue_cfg_ready),
+.queue_cfg_clear(queue_cfg_clear),
+.maintenance_grant(maintenance_grant),
+.queue_cfg_base(queue_cfg_base),
+.queue_cfg_bytes(queue_cfg_bytes),
+.queue_cfg_result_valid(queue_cfg_result_valid),
+.queue_cfg_result_ready(queue_cfg_result_ready),
+.queue_cfg_status(queue_cfg_status),
+.control_valid(f_control_valid),
+.control_ready(f_control_ready),
+.control_op(f_control_op),
+.control_user(f_control_user),
+.control_application(f_control_application),
+.control_stream(f_control_stream),
+.control_generation(f_control_generation),
+.control_address(f_control_address),
+.control_buffer_base(f_control_buffer_base),
+.control_buffer_bytes(f_control_buffer_bytes),
+.control_message_limit(f_control_message_limit),
+.control_protobuf(f_control_protobuf),
+.control_unsupported_encoding(f_control_unsupported_encoding),
+.control_maintenance(f_control_maintenance),
+.control_result_valid(f_control_result_valid),
+.control_result_ready(f_control_result_ready),
+.control_status(f_control_status),
+.control_detail(f_control_detail),
+.control_memory_status(f_control_memory_status),
+.control_result_op(f_control_result_op),
+.control_result_address(f_control_result_address),
+.control_result_buffer_base(f_control_result_buffer_base),
+.control_result_buffer_bytes(f_control_result_buffer_bytes),
+.control_result_user(f_control_result_user),
+.control_result_application(f_control_result_application),
+.control_result_stream(f_control_result_stream),
+.control_result_generation(f_control_result_generation),
+.control_result_message_limit(f_control_result_message_limit),
+.control_result_protobuf(f_control_result_protobuf),
+.control_result_unsupported_encoding(f_control_result_unsupported_encoding),
+.control_result_state(f_control_result_state),
+.packet_result_valid(packet_result_valid),
+.packet_result_ready(packet_result_ready),
+.packet_committed(packet_committed),
+.packet_status(packet_status),
+.packet_detail(packet_detail),
+.packet_memory_status(packet_memory_status),
+.packet_user(packet_user),
+.packet_tag(packet_tag),
+.rpc_error_valid(rpc_error_valid),
+.rpc_error_ready(rpc_error_ready),
+.rpc_error_status(rpc_error_status),
+.rpc_error_detail(rpc_error_detail),
+.rpc_error_memory_status(rpc_error_memory_status),
+.rpc_error_user(rpc_error_user),
+.rpc_error_application(rpc_error_application),
+.rpc_error_stream(rpc_error_stream),
+.rpc_error_generation(rpc_error_generation),
+.rpc_error_packet_tag(rpc_error_packet_tag),
+.stream_recovery_required(stream_recovery_required),
+.stream_recovery_address(stream_recovery_address),
+.queue_recovery_required(queue_recovery_required),
+.queue_recovery_detail(queue_recovery_detail),
+.queue_recovery_memory_status(queue_recovery_memory_status),
+.retirement_pending(retirement_pending),
+.queued_count(queued_count),
+.pending_count(pending_count),
+.admit_messages(admit_messages),
+.stream_cfg_valid(f_stream_cfg_valid),
+.stream_cfg_ready(f_stream_cfg_ready),
+.stream_cfg_result_valid(stream_cfg_result_valid),
+.stream_cfg_result_ready(stream_cfg_result_ready),
+.stream_cfg_status(stream_cfg_status),
+.cfg_unlock(cfg_unlock),
+.cfg_schema_valid(f_cfg_schema_valid),
+.cfg_schema_ready(f_cfg_schema_ready),
+.cfg_quiescent(f_cfg_quiescent),
+.cfg_schema_index(cfg_schema_index),
+.cfg_schema_key(cfg_schema_key),
+.cfg_schema_key_length(cfg_schema_key_length),
+.cfg_schema_json_enable(cfg_schema_json_enable),
+.cfg_schema_field(cfg_schema_field),
+.cfg_schema_proto_enable(cfg_schema_proto_enable),
+.completion_valid(completion_valid),
+.completion_ready(completion_ready),
+.completion_status(completion_status),
+.completion_detail(completion_detail),
+.completion_memory_status(completion_memory_status),
+.completion_user(completion_user),
+.completion_application(completion_application),
+.completion_stream(completion_stream),
+.completion_generation(completion_generation),
+.completion_ordinal(completion_ordinal),
+.completion_packet_tag(completion_packet_tag),
+.payload_lease_active(payload_lease_active),
+.cfg_token_profile(cfg_token_profile),
+.cfg_token_class_base(cfg_token_class_base),
+.cfg_token_hash_base(cfg_token_hash_base),
+.cfg_token_node_base(cfg_token_node_base),
+.cfg_token_edge_base(cfg_token_edge_base),
+.cfg_token_node_count(cfg_token_node_count),
+.cfg_token_edge_count(cfg_token_edge_count),
+.cfg_token_work_floor(cfg_token_work_floor),
+.cfg_token_scalar_base(cfg_token_scalar_base),
+.cfg_token_merge_base(cfg_token_merge_base),
+.cfg_token_commit_base(cfg_token_commit_base),
+.cfg_token_scalar_bytes(cfg_token_scalar_bytes),
+.cfg_token_merge_bytes(cfg_token_merge_bytes),
+.cfg_token_commit_bytes(cfg_token_commit_bytes),
+.m_axis_tokens_tdata(m_axis_tokens_tdata),
+.m_axis_tokens_tkeep(m_axis_tokens_tkeep),
+.m_axis_tokens_tvalid(m_axis_tokens_tvalid),
+.m_axis_tokens_tready(m_axis_tokens_tready),
+.m_axis_tokens_tlast(m_axis_tokens_tlast),
+.m_axis_tokens_tuser(m_axis_tokens_tuser),
+.dma_connection(dma_connection),
+.dma_stream(dma_stream),
+.dma_generation(dma_generation),
+.dma_ordinal(dma_ordinal),
+.dma_packet_tag(dma_packet_tag),
+.completion_count(completion_count),
+.completion_token_stage(completion_token_stage),
+.completion_token_detail(completion_token_detail),
+.completion_token_status(completion_token_status),
+.s_return_tdata(128'd0),
+.s_return_tkeep(16'd0),
+.s_return_tvalid(1'b0),
+.s_return_tready(),
+.s_return_tlast(1'b0),
+.s_return_tuser({USER_WIDTH{1'b0}}),
+.m_return_tdata(),
+.m_return_tkeep(),
+.m_return_tvalid(),
+.m_return_tready(1'b1),
+.m_return_tlast(),
+.m_return_tuser(),
+.admit_packets(admit_packets),
+.cfg_context_base(cfg_context_base),
+.cfg_context_bytes(cfg_context_bytes),
+.command_valid(f_command_valid),
+.command_ready(f_command_ready),
+.command_op(command_op),
+.command_user(command_user),
+.command_server_role(command_server_role),
+.command_allow_push(command_allow_push),
+.command_max_frame_bytes(command_max_frame_bytes),
+.command_buffer_base(command_buffer_base),
+.command_table_base(command_table_base),
+.command_scratch_base(command_scratch_base),
+.command_buffer_bytes(command_buffer_bytes),
+.command_table_bytes(command_table_bytes),
+.command_scratch_bytes(command_scratch_bytes),
+.command_hpack_maximum(command_hpack_maximum),
+.command_hpack_allowed(command_hpack_allowed),
+.command_header_list_limit(command_header_list_limit),
+.command_required_maximum(command_required_maximum),
+.command_required_update(command_required_update),
+.s_axis_rx_tdata(s_axis_rx_tdata),
+.s_axis_rx_tkeep(s_axis_rx_tkeep),
+.s_axis_rx_tvalid(f_s_axis_rx_tvalid),
+.s_axis_rx_tready(f_s_axis_rx_tready),
+.s_axis_rx_tlast(s_axis_rx_tlast),
+.s_axis_rx_tuser(s_axis_rx_tuser),
+.rsp_valid(rsp_valid),
+.rsp_ready(rsp_ready),
+.rsp_is_command(rsp_is_command),
+.rsp_command_op(rsp_command_op),
+.rsp_status(rsp_status),
+.rsp_detail(rsp_detail),
+.rsp_memory_status(rsp_memory_status),
+.rsp_http2_error(rsp_http2_error),
+.rsp_user(rsp_user),
+.s_axis_rx_tag(s_axis_rx_tag),
+.cfg_payload_base(cfg_payload_base),
+.cfg_work_floor(cfg_work_floor),
+.cfg_route_base(cfg_route_base),
+.cfg_route_strings_base(cfg_route_strings_base),
+.cfg_payload_bytes(cfg_payload_bytes),
+.cfg_payload_slot_bytes(cfg_payload_slot_bytes),
+.cfg_route_bytes(cfg_route_bytes),
+.cfg_route_strings_bytes(cfg_route_strings_bytes),
+.cfg_routes(cfg_routes),
+.cfg_model_epoch(cfg_model_epoch),
+.cfg_schema_epoch(cfg_schema_epoch),
+.header_valid(header_valid),
+.header_ready(header_ready),
+.header_status(header_status),
+.header_detail(header_detail),
+.header_memory_status(header_memory_status),
+.header_control_status(header_control_status),
+.header_cleanup_status(header_cleanup_status),
+.header_connection_error(header_connection_error),
+.header_http2_error(header_http2_error),
+.header_http_status(header_http_status),
+.header_grpc_status(header_grpc_status),
+.header_user(header_user),
+.header_stream(header_stream),
+.header_generation(header_generation),
+.header_address(header_address),
+.header_application(header_application),
+.header_model_epoch(header_model_epoch),
+.header_schema_epoch(header_schema_epoch),
+.header_trailers(header_trailers),
+.header_end_stream(header_end_stream),
+.admission_recovery_required(admission_recovery_required),
+.admission_recovery_address(admission_recovery_address),
+.admission_recovery_user(admission_recovery_user),
+.transport_recovery_required(transport_recovery_required),
+.transport_recovery_address(transport_recovery_address),
+.control_event_valid(control_event_valid),
+.control_event_ready(control_event_ready),
+.control_event_kind(control_event_kind),
+.control_event_arg0(control_event_arg0),
+.control_event_arg1(control_event_arg1),
+.control_event_stream(control_event_stream),
+.control_event_user(control_event_user),
+.transport_packet_status(transport_packet_status),
+.transport_packet_detail(transport_packet_detail),
+.transport_packet_memory_status(transport_packet_memory_status),
+.transport_packet_http2_error(transport_packet_http2_error),
+.idle(f_idle),
+.mem_valid(f_mem_valid),
+.mem_ready(f_mem_ready),
+.mem_write(f_mem_write),
+.mem_addr(f_mem_addr),
+.mem_bytes(f_mem_bytes),
+.mem_data(f_mem_data),
+.mem_rsp_valid(f_mem_rsp_valid),
+.mem_rsp_ready(f_mem_rsp_ready),
+.mem_rsp_data(f_mem_rsp_data),
+.mem_rsp_status(f_mem_rsp_status)
+);
+rpc_generated_response #(.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH),.MAX_TEXT_BYTES(MAX_TEXT_BYTES)) reverse(
+.clk(clk),
+.rst(rst),
+.s_axis_tokens_tdata(s_axis_generated_tdata),
+.s_axis_tokens_tkeep(s_axis_generated_tkeep),
+.s_axis_tokens_tvalid(s_axis_generated_tvalid&&reverse_admit),
+.s_axis_tokens_tready(reverse_input_ready),
+.s_axis_tokens_tlast(s_axis_generated_tlast),
+.s_axis_tokens_tuser(s_axis_generated_tuser),
+.s_stream(generated_stream),
+.s_generation(generated_generation),
+.s_model_epoch(generated_model_epoch),
+.s_schema_epoch(generated_schema_epoch),
+.s_ordinal(generated_ordinal),
+.cfg_stream_base(owned_stream_base),
+.cfg_progress_base(cfg_response_progress_base),
+.cfg_work_floor(cfg_work_floor),
+.cfg_stream_bytes(owned_stream_bytes),
+.cfg_progress_bytes(cfg_response_progress_bytes),
+.cfg_model_epoch(cfg_model_epoch),
+.cfg_schema_epoch(cfg_schema_epoch),
+.cfg_directory_base(cfg_response_directory_base),
+.cfg_pool_base(cfg_response_pool_base),
+.cfg_directory_bytes(cfg_response_directory_bytes),
+.cfg_pool_bytes(cfg_response_pool_bytes),
+.cfg_strip_special(cfg_response_strip_special),
+.cfg_replace_invalid(cfg_response_replace_invalid),
+.cfg_format(cfg_response_format),
+.cfg_protobuf_field(cfg_response_protobuf_field),
+.directory_valid(r_directory_valid),
+.directory_ready(r_directory_ready),
+.directory_user(r_directory_user),
+.directory_stream(r_directory_stream),
+.directory_pool_base(r_directory_pool_base),
+.directory_pool_bytes(r_directory_pool_bytes),
+.directory_result_valid(r_directory_result_valid),
+.directory_result_ready(r_directory_result_ready),
+.directory_status(r_directory_status),
+.directory_memory_status(r_directory_memory_status),
+.directory_address(r_directory_address),
+.directory_application(r_directory_application),
+.directory_generation(r_directory_generation),
+.directory_protobuf(r_directory_protobuf),
+.directory_unsupported_encoding(r_directory_unsupported_encoding),
+.m_axis_tx_tdata(m_axis_tx_tdata),
+.m_axis_tx_tkeep(m_axis_tx_tkeep),
+.m_axis_tx_tvalid(m_axis_tx_tvalid),
+.m_axis_tx_tready(m_axis_tx_tready),
+.m_axis_tx_tlast(m_axis_tx_tlast),
+.m_axis_tx_tuser(m_axis_tx_tuser),
+.result_valid(response_result_valid),
+.result_ready(response_result_ready),
+.result_stage(response_result_stage),
+.result_status(response_result_status),
+.result_memory_status(response_result_memory_status),
+.result_user(response_result_user),
+.result_application(response_result_application),
+.result_stream(response_result_stream),
+.result_generation(response_result_generation),
+.result_model_epoch(response_result_model_epoch),
+.result_schema_epoch(response_result_schema_epoch),
+.result_ordinal(response_result_ordinal),
+.result_bytes(response_result_bytes),
+.result_eos(response_result_eos),
+.result_tx_emitted(response_result_tx_emitted),
+.recovery_required(response_recovery_required),
+.recovery_address(response_recovery_address),
+.directory_lease_active(response_directory_lease_active),
+.idle(response_idle),
+.mem_valid(mem_valid[20+:2]),
+.mem_ready(mem_ready[20+:2]),
+.mem_write(mem_write[20+:2]),
+.mem_addr(mem_addr[20*MEMORY_ADDR_WIDTH+:2*MEMORY_ADDR_WIDTH]),
+.mem_bytes(mem_bytes[80+:8]),
+.mem_data(mem_data[1440+:144]),
+.mem_rsp_valid(mem_rsp_valid[20+:2]),
+.mem_rsp_ready(mem_rsp_ready[20+:2]),
+.mem_rsp_data(mem_rsp_data[1440+:144]),
+.mem_rsp_status(mem_rsp_status[160+:16])
+);
+endmodule
+`default_nettype wire

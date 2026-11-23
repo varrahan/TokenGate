@@ -1,0 +1,39 @@
+.Xil/
+*.jou
+*.log
+*.str
+dfx_runtime.txt
+.pytest_cache/
+*.backup.*
+Parser/*.cache/
+Parser/*.hw/
+Parser/*.ip_user_files/
+Parser/*.runs/
+Parser/*.sim/
+Parser/*.gen/
+Parser/*.srcs/
+build/
+.venv*/
+__pycache__/
+*.pyc
+
+# Local synchronization state and scratch files
+.codex-parser-sync.json
+tmp/
+
+# Generated Vivado state in packaged FPGA projects
+FPGA/projects/*/*.cache/
+FPGA/projects/*/*.hw/
+FPGA/projects/*/*.ip_user_files/
+FPGA/projects/*/*.runs/
+FPGA/projects/*/*.sim/
+FPGA/projects/*/*.gen/
+FPGA/projects/*/*.srcs/
+
+# Generated simulator crash dumps and root-level implementation reports
+hs_err_pid*.dmp
+/xelab.pb
+/xvlog.pb
+/clockInfo.txt
+/iter_*_CongestedCLBsAndNets.txt
+/tight_setup_hold_pins.txt
