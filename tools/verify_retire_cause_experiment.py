@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -44,7 +46,7 @@ def main():
         assert tokenizer_hashes is None or tokenizer_hashes==hashes[1]
         parser_hashes,tokenizer_hashes=hashes
         for top in cache[signature].values():
-            for p in top.values():assert inputs[p.as_posix()]==generation['generated_sha256'].get(p.name,sha(root/p))
+            for p in top.values():assert inputs[p.as_posix()]==generation['generated_sha256'].get(p.name,sha(source_path(root, p)))
         baseline_inputs=base['executions']['native']['inputs_sha256']
         for n in ('build/bidirectional-fixtures/memory.mem','build/bidirectional-fixtures/reference_cases.json',
                   'build/bidirectional-fixtures/response_reference.json','sim/cocotb_two_fpga_enveloped_top.sv'):
@@ -89,8 +91,8 @@ def main():
     assert probe_generation['generator_sha256']==sha(root/'tools/generate_retire_cause_countercase.py')
     assert probe_generation['source_sha256']==sha(root/'sim/cocotb/test_raw_shutdown_faults.py')
     for n in paths:
-        assert n not in generation['input_sha256'] or sha(root/n)==generation['input_sha256'][n]
-        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,p)
+        assert n not in generation['input_sha256'] or sha(source_path(root, n))==generation['input_sha256'][n]
+        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),p)
     for generator,subfolder,manifest in (('generate_retire_cause_experiment.py','retire-cause',generation),
         ('generate_retire_cause_countercase.py','retire-cause-countercase',probe_generation)):
         subprocess.run([sys.executable,str(replay/'tools'/generator)],check=True,capture_output=True,text=True)

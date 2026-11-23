@@ -14,6 +14,8 @@ import tiktoken
 from verify_native_grpc_corpus_reference import varint
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -71,7 +73,7 @@ def main():
         hashes = current
         for path in [*dag.values(), *tokenizer.values()]:
             n = path.relative_to(source).as_posix()
-            assert inputs[n] == overrides.get(n, sha(root / n)), n
+            assert inputs[n] == overrides.get(n, sha(source_path(root, n))), n
         assert inputs['sim/cocotb/' + test_file] == generation['sim_sha256'][overlay]
         assert inputs['sim/cocotb_two_fpga_enveloped_top.sv'] == generation['sim_sha256']['cocotb_two_fpga_enveloped_top.sv']
         assert accepted['complete_model_prefix_immutable'] and accepted['full_system_complete'] is False
@@ -156,7 +158,7 @@ def main():
         'tools/generate_bidirectional_application.py'}
     assert generation['generator_sha256'] == sha(root / 'tools/generate_local_cancel_experiment.py')
     for n in sorted(paths):
-        path = root / n
+        path = source_path(root, n)
         assert n not in generation['input_sha256'] or sha(path) == generation['input_sha256'][n]
         destination = replay / n
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -183,10 +185,10 @@ def main():
     (evidence / 'verified.json').write_text(json.dumps(result, indent=2) + '\n')
     shutil.copy2(Path(__file__), evidence / Path(__file__).name)
     shutil.copy2(folder / 'generation.json', evidence / 'generation.json')
-    for n in ('tools/generate_local_cancel_experiment.py', 'sim/cocotb/test_local_error_credit_stall.py', 'rtl/http2_local_return_abort.v'):
+    for n in ('tools/generate_local_cancel_experiment.py', 'sim/cocotb/test_local_error_credit_stall.py', 'rtl/http2_local_return_abort.v', 'tools/rtl_paths.py'):
         destination = evidence / n
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / n, destination)
+        shutil.copy2(source_path(root, n), destination)
     result.update(key=key, evidence_folder=str(evidence))
     (root / 'build/validation/local-cancel-experiment.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(dict(phase=result['phase'], key=key, executions=len(executions), parser_modules=75)))

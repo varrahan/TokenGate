@@ -10,6 +10,8 @@ import subprocess
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def varint(value):
     data=bytearray()
@@ -25,11 +27,12 @@ def main():
     frozen=folder/'sources';inputs={}
     def freeze(source,name):
         target=frozen/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target);inputs[name]=sha(target)
+    freeze(root/'tools/rtl_paths.py','tools/rtl_paths.py')
     source=root/'FPGA/parser'
     decoder=closure('proto_json_decoder',source);assert len(decoder)==11
     for path in decoder.values():freeze(path,'rtl/'+path.name)
-    freeze(root/'rtl/parser_schema_mmio.v','rtl/parser_schema_mmio.v')
-    freeze(root/'rtl/parser_schema_mmio_decoder.v','rtl/parser_schema_mmio_decoder.v')
+    freeze(source_path(root, 'rtl/parser_schema_mmio.v'),'rtl/parser_schema_mmio.v')
+    freeze(source_path(root, 'rtl/parser_schema_mmio_decoder.v'),'rtl/parser_schema_mmio_decoder.v')
     freeze(root/'sim/tb_parser_schema_mmio.sv','sim/tb_parser_schema_mmio.sv')
     fixture=root/'build/wsl-reports/raw_envelope_json_simd_full_native_corpus_20261122/execution-sources/build/bidirectional-fixtures/reference_cases.json'
     audit=json.loads((root/'build/validation/json-simd-corpus.json').read_text())

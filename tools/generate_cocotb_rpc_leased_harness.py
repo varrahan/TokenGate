@@ -7,6 +7,8 @@ import sys
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import named_instance
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -16,7 +18,7 @@ def main():
     base = root / 'build/rpc-leased-base-harness.sv'
     subprocess.run([sys.executable, str(root / 'tools/generate_cocotb_rpc_grpc_harness.py'), '--output', str(base)], check=True)
     source = base.read_text().replace('module cocotb_rpc_grpc_top;', 'module cocotb_rpc_leased_top;')
-    public = ports((root / 'rtl/rpc_grpc_leased_return.v').read_text(), 'rpc_grpc_leased_return')
+    public = ports((source_path(root, 'rtl/rpc_grpc_leased_return.v')).read_text(), 'rpc_grpc_leased_return')
     connections = {n: n for _, _, n in public}
     host_map = dict(req_valid='host_valid', req_ready='host_ready', req_op='host_op',
         pool_base='host_pool_base', pool_bytes='host_pool_bytes', req_user='host_user', req_application='host_application',
@@ -47,7 +49,7 @@ def main():
         'rpc_grpc_leased_return', '.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)', 'dut', connections))
     start = source.index('assign directory_ready=store_ready;')
     end = source.index('assign all_valid[3]=program_valid;', start)
-    old_directory_ports = [n for _, _, n in ports((root / 'rtl/rpc_grpc_parser_response.v').read_text(), 'rpc_grpc_parser_response')
+    old_directory_ports = [n for _, _, n in ports((source_path(root, 'rtl/rpc_grpc_parser_response.v')).read_text(), 'rpc_grpc_parser_response')
                            if n.startswith('directory_') and n != 'directory_lease_active']
     replacement = ['assign ' + name + '=dut.' + name + ';' for name in old_directory_ports]
     replacement += [

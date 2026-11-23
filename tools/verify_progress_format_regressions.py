@@ -9,6 +9,8 @@ import sys
 
 from verify_frozen_raw_execution import verify_execution
 
+from rtl_paths import source_path
+
 
 TIMING_KEYS={'clock','ack_clock','request_clock','first_offer_clock','result_ack_clock',
     'receive_lock_cycles','held_original_result_cycles','host_close_retired_clock',
@@ -79,7 +81,7 @@ def main():
         'build/experiments/post-retire-fault-matrix/generation.json'}|{v['source']for v in generation['cases'].values()}
     assert sha(root/'tools/generate_progress_format_regressions.py')==generation['generator_sha256']
     for n in paths:
-        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,p)
+        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),p)
     subprocess.run([sys.executable,str(replay/'tools/generate_progress_format_regressions.py')],check=True,capture_output=True,text=True)
     assert json.loads((replay/'build/experiments/progress-format/regressions/generation.json').read_text())==generation
     result=dict(phase='global_progress_format_inherited_protocol_and_shutdown_verified',verified_utc=datetime.now(timezone.utc).isoformat(),

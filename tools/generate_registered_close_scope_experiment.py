@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 import shutil
 
+from rtl_paths import source_path
+
 
 def main():
-    root=Path(__file__).resolve().parents[1];original=root/'rtl/rpc_grpc_http2_return.v';source=original.read_text()
+    root=Path(__file__).resolve().parents[1];original=source_path(root, 'rtl/rpc_grpc_http2_return.v');source=original.read_text()
     scope=('context_base','context_bytes','window_base','window_bytes','work_floor')
     expression='&&'.join('saved_closed_'+n+'==saved_frame_cfg_'+n for n in scope)
     marker='wire closed_scope_matches='+expression+';'

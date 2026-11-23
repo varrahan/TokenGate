@@ -20,6 +20,8 @@ import tiktoken
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 PROFILES = dict(receive_flow='receive-flow', receive_errors='receive-errors',
     duplex='duplex', duplex_faults='duplex-faults', return_faults='return-faults')
@@ -260,7 +262,7 @@ def main():
         all_original_traffic_vectors_and_assertions_preserved=True, portable_memory_backend=True,
         latest_31_module_tokenizer_controller_integrated=False, native_timing_verified=False,
         full_protocol_matrix_verified=False, physical_interfaces_verified=False, full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in sorted(artifacts)})
     result['key'] = hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     audit_name=args.candidate+'-extended'
     target = root/'build/validation'/(audit_name+'-evidence')/result['key']

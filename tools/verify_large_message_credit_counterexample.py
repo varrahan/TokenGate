@@ -13,6 +13,8 @@ from h2.connection import H2Connection
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--name', required=True); args = ap.parse_args()
@@ -108,7 +110,7 @@ def main():
         diagnosis='The configured legal message cannot complete before DATA receive credit is exhausted, so no application DMA completion can trigger the current reclaimer',
         application_credit_fixed=False, native_vendor_runtime_verified=False, full_system_complete=False,
         executed_parser_sha256=assembly['executed_parser_sha256'],
-        artifacts_sha256={p.relative_to(root).as_posix(): sha(p) for p in [launch_path, *[p for p in archive.iterdir() if p.is_file()]]},
+        artifacts_sha256={source_relative(p, root).as_posix(): sha(p) for p in [launch_path, *[p for p in archive.iterdir() if p.is_file()]]},
         verifier_sha256=sha(Path(__file__)))
     result['key'] = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/large-message-credit-counterexample-evidence' / result['key']

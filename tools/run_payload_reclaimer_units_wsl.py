@@ -12,6 +12,8 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -33,10 +35,10 @@ def main():
         target.mkdir(parents=True)
         inputs = {}
         for name in ('rtl/grpc_payload_reclaimer.v', 'rtl/memory_command_slot.v',
-                     'sim/cocotb/test_payload_reclaimer.py', 'tools/run_payload_reclaimer_units_wsl.py'):
+                     'sim/cocotb/test_payload_reclaimer.py', 'tools/run_payload_reclaimer_units_wsl.py', 'tools/rtl_paths.py'):
             destination = target / name
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(root / name, destination)
+            shutil.copy2(source_path(root, name), destination)
             inputs[name] = sha(destination)
         for leaf in ('memory.mem', 'layout.txt', 'fixture_manifest.json'):
             name = 'build/bidirectional-fixtures/' + leaf
@@ -71,7 +73,7 @@ def main():
         raise SystemExit(result.returncode)
     assert root.parent == approved / 'build/payload-reclaimer-units'
     inputs = json.loads((root / 'inputs.json').read_text())
-    assert all(sha(root / n) == h for n, h in inputs.items())
+    assert all(sha(source_path(root, n)) == h for n, h in inputs.items())
     from cocotb_tools.runner import get_runner
     sys.path.insert(0, str(root / 'sim/cocotb'))
     build = root / 'build/test'
@@ -80,7 +82,7 @@ def main():
         started_utc=datetime.now(timezone.utc).isoformat())
     try:
         runner = get_runner('icarus')
-        runner.build(sources=[root / 'rtl/grpc_payload_reclaimer.v', root / 'rtl/memory_command_slot.v'],
+        runner.build(sources=[source_path(root, 'rtl/grpc_payload_reclaimer.v'), source_path(root, 'rtl/memory_command_slot.v')],
             hdl_toplevel='grpc_payload_reclaimer', build_dir=build, always=True, log_file=build / 'build.log')
         runner.test(hdl_toplevel='grpc_payload_reclaimer', test_module='test_payload_reclaimer',
             test_dir=build, build_dir=build, results_xml=build / 'results.xml', seed=20261122,
@@ -88,7 +90,7 @@ def main():
         xml = ET.parse(build / 'results.xml')
         assert len(xml.findall('.//testcase')) == 1 and not xml.findall('.//failure') and not xml.findall('.//error')
         assert json.loads((build / 'acceptance.json').read_text())['phase'] == 'passed'
-        assert all(sha(root / n) == h for n, h in inputs.items())
+        assert all(sha(source_path(root, n)) == h for n, h in inputs.items())
         report.update(phase='passed', passed=True, acceptance_sha256=sha(build / 'acceptance.json'))
     except BaseException as error:
         report.update(phase='failed', error=str(error))

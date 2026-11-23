@@ -16,6 +16,8 @@ from generate_bidirectional_application import ports
 from generate_two_fpga_application import add_ports, rename
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -68,7 +70,7 @@ def main():
     for p in dag.values():
         n = p.relative_to(source).as_posix()
         if inputs[n] != previous_inputs[n]: differences.append(n)
-        if n not in changed: assert inputs[n] == sha(root / n), n
+        if n not in changed: assert inputs[n] == sha(source_path(root, n)), n
     assert differences == ['rtl/rpc_http2_response_partition.v']
     for n, h in inputs.items():
         if n.startswith(('build/rpc-grpc-fixtures/', 'build/grpc-header-fixtures/', 'native-vendor/')):
@@ -79,7 +81,7 @@ def main():
 
     proof = root / 'build/wsl-reports' / ('rpc_backend_equivalence_' + args.proof)
     executed, proof_inputs, proof_report, _ = record(proof, 'formal')
-    assert proof_inputs['rtl/gold_input.v'] == previous_inputs['rtl/rpc_http2_response_partition.v'] == sha(root / 'rtl/rpc_http2_response_partition.v')
+    assert proof_inputs['rtl/gold_input.v'] == previous_inputs['rtl/rpc_http2_response_partition.v'] == sha(source_path(root, 'rtl/rpc_http2_response_partition.v'))
     assert proof_inputs['rtl/gate_input.v'] == inputs['rtl/rpc_http2_response_partition.v']
     assert proof_inputs['rtl/memory_command_slot.v'] == inputs['rtl/memory_command_slot.v']
     for n, h in proof_report['generated_sha256'].items(): assert sha(proof / n) == h, n
@@ -179,14 +181,14 @@ def main():
             raw_dag = closure(top, raw_source); assert len(raw_dag) == count
             for p in raw_dag.values():
                 n = p.relative_to(raw_source).as_posix()
-                assert raw_inputs[n] == (inputs[n] if n in changed else sha(root / n)), n
+                assert raw_inputs[n] == (inputs[n] if n in changed else sha(source_path(root, n))), n
         for n in ('acceptance.json', 'simulation.log', 'build.log', 'results.xml'):
             files[Path('raw') / profile / 'reports' / n] = raw / n
         raw_records[profile] = raw_acceptance
 
     part = 'xcau15p-ffvb676-2-e'; top = 'http2_enveloped_parser_application'
     folder = root / 'build/implementation' / part / args.native_run
-    log = root / ('build/' + args.native_run + '-implementation.log')
+    log = source_path(root, 'build/' + args.native_run + '-implementation.log')
     native = dict(phase='not_yet_verified', run=args.native_run, timing_met=False)
     log_bytes = log.read_bytes() if log.is_file() else b''; log_text = log_bytes.decode()
     routed = f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={top} PART={part}' in log_text

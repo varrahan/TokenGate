@@ -7,6 +7,8 @@ import shutil
 from generate_receive_pool_experiment import replace
 from generate_two_fpga_application import add_ports, instance, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 POST = [('input','','post_abort_valid'),('output','','post_abort_ready'),
     ('input','[USER_WIDTH-1:0]','post_abort_user'),('input','[31:0]','post_abort_tag'),
@@ -23,12 +25,12 @@ def main():
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     inputs={}
     for p in previous.glob('*.v'):
-        shutil.copy2(p,target/p.name);inputs[p.relative_to(root).as_posix()]=sha(p)
+        shutil.copy2(p,target/p.name);inputs[source_relative(p, root).as_posix()]=sha(p)
 
     def read(name):
         p=previous/(name+'.v')
-        if not p.exists():p=root/'rtl'/(name+'.v')
-        inputs[p.relative_to(root).as_posix()]=sha(p)
+        if not p.exists():p=source_path(root, Path('rtl') / (name+'.v'))
+        inputs[source_relative(p, root).as_posix()]=sha(p)
         return p.read_text()
 
     def feature(text,name):
@@ -139,12 +141,12 @@ assign p_post_abort_result_ready=state==POST_ABORT_WAIT;
     (target/(name+'.v')).write_text(text)
     sim=folder/'sim';sim.mkdir(exist_ok=True)
     witness=root/'sim/cocotb/post_commit_retire_witness.py'
-    inputs[witness.relative_to(root).as_posix()]=sha(witness)
+    inputs[source_relative(witness, root).as_posix()]=sha(witness)
     cases=root/'build/experiments/local-semantic-cases'
     case_manifest=json.loads((cases/'generation.json').read_text())
-    inputs[(cases/'generation.json').relative_to(root).as_posix()]=sha(cases/'generation.json')
+    inputs[source_relative(cases/'generation.json', root).as_posix()]=sha(cases/'generation.json')
     for name,case in case_manifest['cases'].items():
-        p=cases/name/'test_raw_grpc_duplex.py';inputs[p.relative_to(root).as_posix()]=sha(p)
+        p=cases/name/'test_raw_grpc_duplex.py';inputs[source_relative(p, root).as_posix()]=sha(p)
         text=replace(p.read_text(),'from test_two_fpga_application import SeparateMemory',
             'from test_two_fpga_application import SeparateMemory\nfrom post_commit_retire_witness import PostCommitRetireWitness')
         text=replace(text,'    trace = []','    trace = []\n    retirement = PostCommitRetireWitness(d,b)')
@@ -155,7 +157,7 @@ assign p_post_abort_result_ready=state==POST_ABORT_WAIT;
             '        actual_goaway_after_gpu_retirement=True, complete_model_prefix_immutable=True,')
         destination=sim/name/'test_raw_grpc_duplex.py';destination.parent.mkdir(exist_ok=True);destination.write_text(text)
     p=root/'build/experiments/local-cancel/sim/test_raw_grpc_enveloped.py'
-    inputs[p.relative_to(root).as_posix()]=sha(p)
+    inputs[source_relative(p, root).as_posix()]=sha(p)
     text=replace(p.read_text(),'import cocotb\n','import cocotb\nfrom post_commit_retire_witness import PostCommitRetireWitness\n')
     text=replace(text,'    b.configure();cocotb.start_soon(',
         '    retirement=PostCommitRetireWitness(d,b);cocotb.start_soon(retirement.observe())\n    b.configure();cocotb.start_soon(') if '    b.configure();cocotb.start_soon(' in text else replace(text,

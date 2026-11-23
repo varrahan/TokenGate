@@ -6,13 +6,15 @@ import shutil
 
 from generate_receive_pool_experiment import replace
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
     previous=root/'build/experiments/window-format/rtl'
     folder=root/'build/experiments/window-cause';target=folder/'rtl';target.mkdir(parents=True,exist_ok=True)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    inputs={p.relative_to(root).as_posix():sha(p) for p in previous.glob('*.v')}
+    inputs={source_relative(p, root).as_posix():sha(p) for p in previous.glob('*.v')}
     for p in previous.glob('*.v'):shutil.copy2(p,target/p.name)
     name='http2_classified_parser_transport';text=(previous/(name+'.v')).read_text()
     declaration='    reg [7:0] prior_abort_control_error,prior_abort_control_cause,prior_abort_control_memory,prior_abort_raw_detail,prior_abort_raw_memory;\n'

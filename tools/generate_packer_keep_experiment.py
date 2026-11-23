@@ -6,6 +6,8 @@ import shutil
 
 from generate_receive_pool_experiment import replace
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -17,10 +19,10 @@ def main():
     inputs = {}
     for path in (source / 'rtl').glob('*.v'):
         shutil.copy2(path, target / path.name)
-        inputs[path.relative_to(root).as_posix()] = sha(path)
-    path = root / 'rtl/axis_byte_packer.v'
+        inputs[source_relative(path, root).as_posix()] = sha(path)
+    path = source_path(root, 'rtl/axis_byte_packer.v')
     original = path.read_text()
-    inputs[path.relative_to(root).as_posix()] = sha(path)
+    inputs[source_relative(path, root).as_posix()] = sha(path)
     candidate = replace(original, '                data_reg<=0; keep_reg<=0; count<=0; end_pending<=0;',
         '                keep_reg<=0; count<=0; end_pending<=0;')
     candidate = replace(candidate, "                        data_reg<={{(DATA_WIDTH-8){1'b0}},s_data};",

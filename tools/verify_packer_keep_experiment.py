@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser_args = argparse.ArgumentParser()
@@ -75,7 +77,7 @@ def main():
         assert 'axis_byte_packer' in tokenizer
         for p in [*parser.values(), *tokenizer.values()]:
             n = p.relative_to(source).as_posix()
-            assert inputs[n] == expected.get(n, sha(root / n))
+            assert inputs[n] == expected.get(n, sha(source_path(root, n)))
         previous = base['executions'][label]
         previous_source = root / 'build/wsl-reports' / ('raw_envelope_' + previous['snapshot']) / 'execution-sources'
         test = 'test_raw_grpc_enveloped.py' if profile == 'native' else 'test_raw_grpc_duplex.py'
@@ -92,10 +94,10 @@ def main():
         'tools/generate_bidirectional_application.py'}
     assert generation['generator_sha256'] == sha(root / 'tools/generate_packer_keep_experiment.py')
     for n in paths:
-        assert n not in generation['input_sha256'] or sha(root / n) == generation['input_sha256'][n]
+        assert n not in generation['input_sha256'] or sha(source_path(root, n)) == generation['input_sha256'][n]
         destination = replay / n
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / n, destination)
+        shutil.copy2(source_path(root, n), destination)
     subprocess.run([sys.executable, str(replay / 'tools/generate_packer_keep_experiment.py')], check=True, capture_output=True, text=True)
     for subfolder, hashes in (('rtl', generation['generated_sha256']), ('formal', generation['formal_sha256'])):
         for n, h in hashes.items():

@@ -13,6 +13,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument('--snapshot', default='keyed_receive_verilog_regression'); args = parser.parse_args()
@@ -28,9 +30,9 @@ def main():
     dag = closure('http2_keyed_receive_credit_store', source)
     assert set(dag) == {'http2_keyed_receive_credit_store', 'http2_receive_credit_store', 'memory_command_slot'}
     for p in dag.values():
-        n = p.relative_to(source).as_posix(); assert inputs[n] == sha(root / n), n
-    for n in ('sim/cocotb/test_keyed_receive_credits.py', 'sim/cocotb/test_receive_credit_store.py', 'tools/generate_keyed_receive_credit_store.py'):
-        assert inputs[n] == sha(root / n), n
+        n = p.relative_to(source).as_posix(); assert inputs[n] == sha(source_path(root, n)), n
+    for n in ('sim/cocotb/test_keyed_receive_credits.py', 'sim/cocotb/test_receive_credit_store.py', 'tools/generate_keyed_receive_credit_store.py', 'tools/rtl_paths.py'):
+        assert inputs[n] == sha(source_path(root, n)), n
     assert inputs['build/http2-send-window-fixtures/model.bin'] == 'c78a595768d15967d1490cae21a1f37ecf326c46ba6a119d4f6f7fc00c01d10c'
     xml = ET.parse(archive / 'results.xml'); cases = xml.findall('.//testcase')
     assert len(cases) == 1 and cases[0].attrib['name'] == 'actual_key_lookup_preserves_receive_credit_ownership'
@@ -53,7 +55,7 @@ def main():
             assert case['memory_commands'] == case['phase'] + 1
             assert case['wire_retired'] is (op == 4 and case['phase'] >= count - 2)
     replay = root / 'build/validation/keyed-receive-generation-replay'
-    for n in ('rtl/http2_receive_credit_store.v', 'tools/generate_keyed_receive_credit_store.py', 'tools/generate_bidirectional_application.py'):
+    for n in ('rtl/http2_receive_credit_store.v', 'tools/generate_keyed_receive_credit_store.py', 'tools/generate_bidirectional_application.py', 'tools/rtl_paths.py'):
         p = replay / n; p.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(source / n, p)
     subprocess.run([sys.executable, str(replay / 'tools/generate_keyed_receive_credit_store.py')], check=True, capture_output=True, text=True)
     assert sha(replay / 'rtl/http2_keyed_receive_credit_store.v') == inputs['rtl/http2_keyed_receive_credit_store.v']

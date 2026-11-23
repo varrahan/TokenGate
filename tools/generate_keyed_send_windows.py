@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_lifecycle_send_windows import replace_once
 from generate_registered_window_geometry import registered_geometry
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    source = root / 'rtl/http2_lifecycle_send_window_store.v'
+    source = source_path(root, 'rtl/http2_lifecycle_send_window_store.v')
     text = source.read_text().replace('http2_lifecycle_send_window_store', 'http2_keyed_send_window_store')
     for old, new in (
         ('CLOSE_SEND=8;', 'CLOSE_SEND=8,WINDOW_UPDATE_KEY=9;'),
@@ -42,15 +44,15 @@ def main():
         '// Missing key status 3/detail 10 is neutral: parent classifies idle versus closed in wire order.\n'
         '// Window bit 127 persists send closure without retiring the actual RPC.')
     text = registered_geometry(text)
-    target = root / 'rtl/http2_keyed_send_window_store.v'; target.write_text(text)
-    owned = root / 'rtl/http2_owned_lifecycle_windows.v'
+    target = source_path(root, 'rtl/http2_keyed_send_window_store.v'); target.write_text(text)
+    owned = source_path(root, 'rtl/http2_owned_lifecycle_windows.v')
     joined = owned.read_text().replace('http2_owned_lifecycle_windows', 'http2_owned_keyed_windows')
     joined = joined.replace('http2_lifecycle_send_window_store #(', 'http2_keyed_send_window_store #(')
-    joined_target = root / 'rtl/http2_owned_keyed_windows.v'; joined_target.write_text(joined)
+    joined_target = source_path(root, 'rtl/http2_owned_keyed_windows.v'); joined_target.write_text(joined)
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     (root / 'build/validation/keyed-send-windows-generation.json').write_text(json.dumps(dict(
-        phase='generated_actual_pool_keyed_updates', input_sha256={p.relative_to(root).as_posix(): sha(p)
-        for p in (source, owned, Path(__file__))}, generated_sha256={p.relative_to(root).as_posix(): sha(p)
+        phase='generated_actual_pool_keyed_updates', input_sha256={source_relative(p, root).as_posix(): sha(p)
+        for p in (source, owned, Path(__file__))}, generated_sha256={source_relative(p, root).as_posix(): sha(p)
         for p in (target, joined_target)}, update_key_op=9, no_caller_address_or_generation=True,
         raw_control_integrated=False, unknown_stream_wire_classification_integrated=False,
         full_system_complete=False), indent=2) + '\n')

@@ -11,6 +11,8 @@ import sys
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     driver_bytes=Path(__file__).read_bytes()
@@ -122,7 +124,7 @@ def main():
         inputs[name] = sha(p)
         certificates[name] = dict(before_sha256=originals[name], after_sha256=inputs[name], replacements=replacements)
     name = 'sim/cocotb/test_rpc_admission_fence.py'
-    shutil.copy2(root / name, target / name)
+    shutil.copy2(source_path(root, name), target / name)
     inputs[name] = sha(target / name)
     if changed_policy and args.scenario=='preservation':
         p=target/name;original=p.read_bytes().decode()
@@ -139,13 +141,13 @@ def main():
         inputs[name]=sha(p)
     if args.scenario!='preservation':
         name='sim/cocotb/'+selected_test+'.py'
-        shutil.copy2(root/name,target/name);inputs[name]=sha(target/name)
+        shutil.copy2(source_path(root, name),target/name);inputs[name]=sha(target/name)
         if args.scenario in('gpu-first','reset-first'):
             helper_name='sim/cocotb/test_rpc_stream_refusal.py'
-            shutil.copy2(root/helper_name,target/helper_name);inputs[helper_name]=sha(target/helper_name)
+            shutil.copy2(source_path(root, helper_name),target/helper_name);inputs[helper_name]=sha(target/helper_name)
         if args.scenario=='history':
             helper_name='sim/cocotb/test_rpc_refusal_faults.py'
-            shutil.copy2(root/helper_name,target/helper_name);inputs[helper_name]=sha(target/helper_name)
+            shutil.copy2(source_path(root, helper_name),target/helper_name);inputs[helper_name]=sha(target/helper_name)
         if args.scenario=='reset-first':
             p=target/name;original=p.read_bytes().decode();before="ORDER='gpu-first'";after="ORDER='reset-first'"
             assert original.count(before)==1;updated=original.replace(before,after)
@@ -181,6 +183,9 @@ def main():
     assert sha(helper / 'execution-sources' / name) == read(helper / 'inputs.json')[name] == 'a3c8a242b6d7553c53e01c1a9e8b2ba2f276ab2d306e83f4057eb56984793e2a'
     shutil.copy2(helper / 'execution-sources' / name, target / name)
     inputs[name] = sha(target / name)
+    name = 'tools/rtl_paths.py'
+    (target / name).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(root / name, target / name); inputs[name] = sha(target / name)
     (target / 'inputs.json').write_text(json.dumps(inputs, indent=2) + '\n')
     shutil.copy2(candidate / 'generation.json', target / 'fence-generation.json')
     (target / Path(__file__).name).write_bytes(driver_bytes)

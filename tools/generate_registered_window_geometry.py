@@ -5,6 +5,8 @@ from pathlib import Path
 
 from generate_lifecycle_send_windows import replace_once
 
+from rtl_paths import source_path
+
 
 def registered_geometry(text):
     if 'RESULT=12,GEOMETRY=13;' in text:
@@ -38,7 +40,7 @@ def registered_geometry(text):
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    source = root / 'rtl/http2_keyed_send_window_store.v'
+    source = source_path(root, 'rtl/http2_keyed_send_window_store.v')
     text = registered_geometry(source.read_text())
     target = root / 'build/rtl-experiments/keyed_registered_geometry/http2_keyed_send_window_store.v'
     target.parent.mkdir(parents=True, exist_ok=True); target.write_text(text)

@@ -12,6 +12,8 @@ from hyperframe.frame import DataFrame, Frame
 
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -169,7 +171,7 @@ def main():
         inverse_rtl_modules=list(inverse_dependencies), original_populated_model_preserved=True,
         independently_decoded_native_frame_patterns=decoded_patterns,
         verifier_sha256=sha(Path(__file__)), current_primary_differences=[name for name, digest in inputs.items()
-            if not (root / name).is_file() or sha(root / name) != digest],
+            if not (source_path(root, name)).is_file() or sha(source_path(root, name)) != digest],
         shared_leased_directory_integrated=args.leased_directory or args.durable_return, complete_forward_application_joined=False,
         actual_http2_window_update_ingress_verified=False, headers_trailers_verified=False, credit_ledger_verified=args.durable_return,
         actual_progress_authorized_durable_return_verified=args.durable_return,
@@ -196,12 +198,12 @@ def main():
             assert sha(path) == report['source_sha256'][name]
             files[Path('native/sources') / name] = path
         result['native_active_rtl_matches_primary'] = all(
-            (root / path.relative_to(sources)).is_file() and sha(root / path.relative_to(sources)) == sha(path)
+            (source_path(root, path.relative_to(sources))).is_file() and sha(source_path(root, path.relative_to(sources))) == sha(path)
             for path in native_dependencies.values())
         implementation = (sources / 'scripts/implement_registered_subsystem.tcl').read_text()
         assert [line.strip() for line in implementation.splitlines() if line.strip().startswith('set_false_path')] == [
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]', 'set_false_path -to [all_outputs]']
-        log = root / ('build/' + args.native_run + '-implementation.log')
+        log = source_path(root, 'build/' + args.native_run + '-implementation.log')
         text = log.read_text()
         assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP='+top+' PART=xcsu35p-sbvb625-2-e' in text
         assert '0 Critical Warnings and 0 Errors encountered.' in text and 'ERROR: [Synth' not in text
@@ -229,7 +231,7 @@ def main():
     key = hashlib.sha256((sha(archive / 'report.json') + sha(Path(__file__)) +
         ('functional-only' if args.functional_only else sha(native / 'source-provenance.json'))).encode()).hexdigest()[:16]
     label='rpc-grpc-keyed-return' if args.keyed_return else 'rpc-grpc-durable-return' if args.durable_return else 'rpc-grpc-leased-return' if args.leased_directory else 'rpc-grpc-return'
-    evidence = root / ('build/validation/'+label+'-evidence') / key
+    evidence = source_path(root, Path('build/validation/'+label+'-evidence') / (key))
     for name, source in files.items():
         target = evidence / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -238,7 +240,7 @@ def main():
         else:
             shutil.copy2(source, target)
     result['evidence_folder'] = str(evidence)
-    (root / ('build/validation/'+label+'.json')).write_text(json.dumps(result, indent=2) + '\n')
+    (source_path(root, 'build/validation/'+label+'.json')).write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))
 
 

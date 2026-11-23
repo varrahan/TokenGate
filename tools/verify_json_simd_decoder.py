@@ -10,6 +10,8 @@ import sys
 import tempfile
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -20,7 +22,7 @@ def main():
     experiment=generation_path.parent;assert generation['parent_corpus_audit_key']==parent['key']
     for name,digest in generation['outputs_sha256'].items():
         path=experiment/name;assert sha(path)==digest;artifacts.add(path)
-    for name,digest in generation['inputs_sha256'].items():assert sha(root/name)==digest
+    for name,digest in generation['inputs_sha256'].items():assert sha(source_path(root, name))==digest
     generator=root/'tools/generate_json_simd_experiment.py';assert sha(generator)==generation['generator_sha256'];artifacts.update((generator,generation_path))
     modules=closure('http2_enveloped_parser_application',experiment);assert len(modules)==76
     changed=sorted(name for name,path in modules.items()if name in parent['executed_parser_sha256']and sha(path)!=parent['executed_parser_sha256'][name])
@@ -37,16 +39,16 @@ def main():
     body=(experiment/'rtl/speculative_json_fsm.v').read_text()
     assert 'state==STRING&&!str_key&&!str_target&&!raw_escape&&'in body
     assert 'norm_ascii_discard_ready&&scan_plain_count!=0'in body and '!plain_discard),.s_ready(norm_ready)'in body
-    for name in changed:assert sha(root/'rtl'/(name+'.v'))==parent['executed_parser_sha256'][name]
+    for name in changed:assert sha(source_path(root, Path('rtl') / (name+'.v')))==parent['executed_parser_sha256'][name]
     # Rebuild the overlay from its exact input files in a short workspace path.
     with tempfile.TemporaryDirectory(prefix='js-',dir=root/'build')as temporary:
         replay=Path(temporary);assert replay.resolve().is_relative_to((root/'build').resolve())
         for name in generation['inputs_sha256']:
-            destination=replay/name;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/name,destination)
+            destination=replay/name;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, name),destination)
         for path in(generator,root/'tools/verify_two_fpga_application.py',
                     root/'tools/generate_two_fpga_application.py',
                     root/'tools/generate_bidirectional_application.py',parent_path):
-            destination=replay/path.relative_to(root);destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,destination)
+            destination=replay/source_relative(path, root);destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,destination)
         rebuilt=subprocess.run([sys.executable,str(replay/'tools/generate_json_simd_experiment.py')],capture_output=True,text=True)
         assert rebuilt.returncode==0,(rebuilt.stdout,rebuilt.stderr)
         assert read(replay/'build/experiments/json-simd/generation.json')['outputs_sha256']==generation['outputs_sha256']
@@ -96,7 +98,7 @@ def main():
     assert native['timing_met']and native['resource_fit']and native['exact_core_modules']==11
     assert native['run']=='decoder_au15p_json_simd_20261122'
     for name,digest in native['artifacts_sha256'].items():
-        path=root/name
+        path=source_path(root, name)
         if not path.exists()or sha(path)!=digest:path=root/'build/validation/json-simd-decoder-native-evidence'/native['key']/name
         assert sha(path)==digest,name
     artifacts.add(root/'build/validation/json-simd-decoder-native-evidence'/native['key']/'verified.json')
@@ -109,13 +111,13 @@ def main():
         core_resources=native['core_resources'],selected_text_normalization_still_scalar=True,
         full_experimental_http2_corpus_verified=False,full_protocol_matrix_verified=False,sustained_line_rate_verified=False,
         package_timing_verified=False,physical_interfaces_verified=False,primary_existing_parser_modules_modified=False,
-        full_system_complete=False,artifacts_sha256={path.relative_to(root).as_posix():sha(path)for path in sorted(artifacts)})
+        full_system_complete=False,artifacts_sha256={source_relative(path, root).as_posix():sha(path)for path in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     target=root/'build/validation/json-simd-decoder.json';target.write_text(json.dumps(result,indent=2)+'\n')
     evidence=root/'build/validation/json-simd-decoder-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
     for name,digest in result['artifacts_sha256'].items():
         if name.startswith('tools/'):
-            destination=evidence/name;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/name,destination);assert sha(destination)==digest
+            destination=evidence/name;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, name),destination);assert sha(destination)==digest
     shutil.copy2(target,evidence/'verified.json')
     print(json.dumps({key:result[key]for key in('phase','key','maximum_bytes_consumed_per_clock','native_audit_key','setup_slack_ns','hold_slack_ns')}))
 

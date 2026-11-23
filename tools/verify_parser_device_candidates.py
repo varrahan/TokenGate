@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 import re
 
+from rtl_paths import source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -30,7 +32,7 @@ def main():
     result = dict(phase='tool_metadata_and_tiny_license_probe_verified',
                   verified_utc=datetime.now(timezone.utc).isoformat(),
                   parser_candidate=expected, license_probe=probe,
-                  source_sha256={p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                  source_sha256={source_relative(p, root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                                  for p in files},
                   user_approved_larger_parser=True, tokenizer_baseline='xcsu35p-sbvb625-2-e',
                   parser_part_selected=False, parser_standalone_synthesis_verified=False,

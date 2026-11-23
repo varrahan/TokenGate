@@ -13,6 +13,8 @@ from run_frame_fifo_equivalence_wsl import observe
 from run_registered_frame_select_wsl import miter,proof_script,ready_cones
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def source_gate(root):
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();read=lambda p:json.loads(p.read_text())
@@ -98,7 +100,7 @@ def main():
         arbitrary_later_resets=True,no_output_queue=True,first_selection_latency_cycles=1,
         sustained_in_frame_beats_per_clock=1,full_application_runtime_verified=False,
         native_timing_verified=False,retained_reset_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in folder.rglob('*')if p.is_file()},
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in folder.rglob('*')if p.is_file()},
         verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/registered-frame-select-unit-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)

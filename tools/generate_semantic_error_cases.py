@@ -11,6 +11,8 @@ from hyperframe.frame import Frame
 from generate_local_protocol_cases import wire
 from generate_receive_pool_experiment import replace
 
+from rtl_paths import source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -74,7 +76,7 @@ def main():
             normative_source='https://www.rfc-editor.org/rfc/rfc9113.html#section-'+section,test_sha256=sha(destination))
     paths=[source,root/'sim/cocotb/local_semantic_error_witness.py',root/'sim/cocotb/local_error_protocol_witness.py',root/'tools/generate_local_protocol_cases.py']
     result=dict(phase='late_semantic_error_cases_generated',generator_sha256=sha(Path(__file__)),
-        input_sha256={p.relative_to(root).as_posix():sha(p) for p in paths},native_h2_version=h2.__version__,
+        input_sha256={source_relative(p, root).as_posix():sha(p) for p in paths},native_h2_version=h2.__version__,
         cases=results,known_native_reference_deviations=['rst_idle_stream'],actual_rtl_cases_verified=False,full_system_complete=False)
     (folder/'generation.json').write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps({n:dict(expected=c['expected_http2_error'],native=c['native_http2_error']) for n,c in results.items()}))

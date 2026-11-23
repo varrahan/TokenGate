@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import shutil
 
+from rtl_paths import source_relative
+
 
 PROGRESS_LINES='''reg previous_quiet=0;
 always @(posedge clk)if(rst)previous_quiet<=0;else previous_quiet<=reference_idle&&quiet_inputs;
@@ -87,7 +89,7 @@ def main():
         complete_production_owner_subtree=True,memory_model_substitution=False,two_state_formal=True,
         nonvacuous_quiet_witness_verified=True,full_application_liveness_verified=False,
         full_protocol_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/frame-owned-quiet-progress-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)
     shutil.copy2(Path(__file__),evidence/Path(__file__).name)

@@ -11,15 +11,17 @@ from generate_bidirectional_application import ports
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import MEMORY, add_ports, instance, named_instance, rename
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]; inputs = {}; outputs = {}
     def read(name):
-        path = root / ('rtl/' + name + '.v'); inputs[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+        path = source_path(root, 'rtl/' + name + '.v'); inputs[source_relative(path, root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
         return path.read_text()
     def emit(name, source):
-        path = root / ('rtl/' + name + '.v'); path.write_text(source)
-        outputs[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+        path = source_path(root, 'rtl/' + name + '.v'); path.write_text(source)
+        outputs[source_relative(path, root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
 
     address = '[MEMORY_ADDR_WIDTH-1:0]'; capacity = '[MEMORY_ADDR_WIDTH:0]'
     callback = [('output', '', 'init_window_req_valid'), ('input', '', 'init_window_req_ready'),

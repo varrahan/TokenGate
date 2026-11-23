@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser()
@@ -59,7 +61,7 @@ def main():
         assert tokenizer_hashes is None or tokenizer_hashes==hashes[1]
         parser_hashes,tokenizer_hashes=hashes
         for top in cache[signature].values():
-            for p in top.values():assert inputs[p.as_posix()]==generation['generated_sha256'].get(p.name,sha(root/p))
+            for p in top.values():assert inputs[p.as_posix()]==generation['generated_sha256'].get(p.name,sha(source_path(root, p)))
         assert accepted==previous['acceptance'],label
         test='test_raw_grpc_enveloped.py' if profile=='native' else 'test_raw_grpc_duplex.py'
         for n in ('sim/cocotb/'+test,'sim/cocotb_two_fpga_enveloped_top.sv','build/bidirectional-fixtures/memory.mem',
@@ -81,8 +83,8 @@ def main():
     paths=set(generation['input_sha256'])|{'tools/generate_pending_idle_experiment.py','tools/generate_receive_pool_experiment.py',
         'tools/generate_two_fpga_application.py','tools/generate_bidirectional_application.py'}
     for n in paths:
-        assert n not in generation['input_sha256'] or sha(root/n)==generation['input_sha256'][n]
-        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,p)
+        assert n not in generation['input_sha256'] or sha(source_path(root, n))==generation['input_sha256'][n]
+        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),p)
     subprocess.run([sys.executable,str(replay/'tools/generate_pending_idle_experiment.py')],check=True,capture_output=True,text=True)
     assert json.loads((replay/'build/experiments/pending-idle/generation.json').read_text())==generation
     result=dict(phase='pending_window_idle_guard_joined_verified',verified_utc=datetime.now(timezone.utc).isoformat(),

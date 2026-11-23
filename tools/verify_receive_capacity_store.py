@@ -13,6 +13,8 @@ from h2.config import H2Configuration
 from h2.connection import H2Connection
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def peers():
     client=H2Connection(H2Configuration(client_side=True));server=H2Connection(H2Configuration(client_side=False))
@@ -170,7 +172,7 @@ def main():
         complete_original_image_preserved=True,typed_component_authority=True,prior_runs_preserved=prior,
         actual_parser_integrated=False,actual_dma_retirement_integrated=False,large_message_deadlock_fixed=False,
         native_vendor_runtime_verified=False,whole_system_retained_reset_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in [archive/'inputs.json',archive/'generation.json',archive/'snapshot.json',archive/'results/report.json',
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in [archive/'inputs.json',archive/'generation.json',archive/'snapshot.json',archive/'results/report.json',
             *[p for p in (archive/'results').glob('*/*') if p.is_file()]]},verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/receive-capacity-store-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)

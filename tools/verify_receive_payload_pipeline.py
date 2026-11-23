@@ -13,6 +13,8 @@ from run_receive_payload_pipeline_formal_wsl import proof_sources
 from verify_registered_frame_select import source_gate as parent_gate
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -151,7 +153,7 @@ sat -verify -prove-asserts -set-assumes -seq 2 -set-init-def -set-def-inputs -ti
         compositional_arithmetic=args.compositional,
         other_parameter_configurations_verified=False,retained_memory_recovery_verified=False,
         actual_controller_runtime_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in folder.iterdir() if p.is_file()},
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in folder.iterdir() if p.is_file()},
         verifier_sha256=sha(Path(__file__)))
     if args.compositional:
         result.update(phase='receive_payload_pipeline_compositional_equivalence_verified',

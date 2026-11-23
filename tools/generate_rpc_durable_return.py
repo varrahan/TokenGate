@@ -11,6 +11,8 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY, header_end, instance, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def once(text, old, new):
     assert text.count(old) == 1, old
@@ -22,9 +24,9 @@ def main():
     root = Path(__file__).resolve().parents[1]
     grant_top='http2_keyed_frame_grants'if args.keyed else'http2_durable_frame_grants'
     return_top='rpc_grpc_keyed_return'if args.keyed else'rpc_grpc_durable_return'
-    original_path = root / 'rtl/grpc_durable_window_framer.v'
+    original_path = source_path(root, 'rtl/grpc_durable_window_framer.v')
     original = original_path.read_text()
-    framer_ports = {n for _, _, n in ports((root / 'rtl/grpc_http2_response_framer.v').read_text(), 'grpc_http2_response_framer')}
+    framer_ports = {n for _, _, n in ports((source_path(root, 'rtl/grpc_http2_response_framer.v')).read_text(), 'grpc_http2_response_framer')}
     keep = {'clk', 'rst', 'start_valid', 'start_ready', 'start_user', 'start_stream', 'idle'}
     public = [p for p in ports(original, 'grpc_durable_window_framer') if p[2] not in framer_ports or p[2] in keep]
     public += [('input', '', 'frame_req_valid'), ('output', '', 'frame_req_ready'),
@@ -57,13 +59,13 @@ def main():
     if args.keyed:
         body=once(body,'http2_owned_lifecycle_windows #(', 'http2_owned_keyed_windows #(')
         body=once(body,'owned_window_rsp_op==4||owned_window_rsp_op==8)', 'owned_window_rsp_op==4||owned_window_rsp_op==8||owned_window_rsp_op==9)')
-    target = root / f'rtl/{grant_top}.v'
+    target = source_path(root, f'rtl/{grant_top}.v')
     target.write_text('\n'.join(['`timescale 1ns/1ps', '`default_nettype none',
         '// Actual cached LOAD/pool grant + durable credit scheduler; frame_req is already authorized.',
         f'module {grant_top} #(parameter integer USER_WIDTH=16,MEMORY_ADDR_WIDTH=23)(',
         ',\n'.join(f'    {d} wire {w} {n}' for d, w, n in public), ');', body]))
 
-    response_path = root / 'rtl/rpc_grpc_parser_response.v'
+    response_path = source_path(root, 'rtl/rpc_grpc_parser_response.v')
     response = ports(response_path.read_text(), 'rpc_grpc_parser_response')
     service = ports(target.read_text(), grant_top)
     control_names = {n: 'control_' + (n[4:] if n.startswith('cfg_') else n)
@@ -147,13 +149,13 @@ def main():
         '            held_credit_status<=credit_error_status;held_credit_detail<=credit_error_detail;held_credit_memory_status<=credit_error_memory_status;',
         '            held_credit_http2_error<=credit_error_http2_error;held_credit_connection_error<=credit_error_connection_error;',
         '        end', '    end', 'end', 'endmodule', '`default_nettype wire', '']
-    joined_path = root / f'rtl/{return_top}.v'; joined_path.write_text('\n'.join(lines))
+    joined_path = source_path(root, f'rtl/{return_top}.v'); joined_path.write_text('\n'.join(lines))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     label='rpc-keyed-generation.json'if args.keyed else'rpc-durable-generation.json'
-    extra_inputs=[root/'rtl/http2_owned_keyed_windows.v',root/'rtl/http2_keyed_send_window_store.v']if args.keyed else[]
+    extra_inputs=[source_path(root, 'rtl/http2_owned_keyed_windows.v'),source_path(root, 'rtl/http2_keyed_send_window_store.v')]if args.keyed else[]
     (root / 'build/validation'/label).write_text(json.dumps(dict(
-        phase='generated_actual_progress_authorized_durable_rpc', input_sha256={p.relative_to(root).as_posix(): sha(p)
-        for p in (original_path, response_path, Path(__file__),*extra_inputs)}, generated_sha256={p.relative_to(root).as_posix(): sha(p)
+        phase='generated_actual_progress_authorized_durable_rpc', input_sha256={source_relative(p, root).as_posix(): sha(p)
+        for p in (original_path, response_path, Path(__file__),*extra_inputs)}, generated_sha256={source_relative(p, root).as_posix(): sha(p)
         for p in (target, joined_path)}, memory_clients=3, actual_progress_gate_preserved=True,
         key_only_updates_supported=args.keyed,raw_control_integrated=False, full_system_complete=False), indent=2) + '\n')
     print('Generated actual progress-authorized RPC/durable-grant join; three local memory clients')

@@ -11,6 +11,8 @@ from generate_hyperram_cdc_timing_harness import ports
 from verify_dual_fpga_hyperram_integration import verify_order
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--name',required=True);args=ap.parse_args()
@@ -48,7 +50,7 @@ def main():
         verify_order(original,ordered,certificate)
         assert ports(original,n)==ports(ordered,n)
         destination=target/'joint/rtl'/(n+'.v');destination.write_bytes(ordered.encode())
-        certificates[n]=dict(portable_source=p.relative_to(root).as_posix(),portable_raw_sha256=sha(p),
+        certificates[n]=dict(portable_source=source_relative(p, root).as_posix(),portable_raw_sha256=sha(p),
             native_sha256=sha(destination),declaration_order_certificate=certificate)
     parser=closure('http2_schema_mmio_application',target/'joint')
     tokenizer=closure('tokenizer_chiplet__tokenizer_hyperram_subsystem',target/'joint')

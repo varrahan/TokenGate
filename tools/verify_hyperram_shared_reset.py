@@ -10,6 +10,8 @@ import sys
 import tempfile
 from run_hyperram_shared_reset_faults import FAULT_BODY
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -31,7 +33,7 @@ def main():
         artifacts.add(path);return text
     assert generation['parent_audit_key']==parent['key']=='cdd643b6c5c660c7'
     for name,digest in generation['outputs_sha256'].items():pin(experiment/name,digest)
-    assert sha(root/'rtl/cdc_packet_fifo.v')=='ad474cf5bf282d2819eb014370ba211f8e5fb698af245eea17b826386b3c1098'
+    assert sha(source_path(root, 'rtl/cdc_packet_fifo.v'))=='ad474cf5bf282d2819eb014370ba211f8e5fb698af245eea17b826386b3c1098'
     assert syntax['exit_code']==elaboration['exit_code']==run['exit_code']==0
     assert syntax['phase']=='syntax_compilation_passed' and elaboration['elaboration_verified']
     assert run['simulation_passed']and run['phase']=='native_full_image_async_memory_passed'
@@ -111,7 +113,7 @@ def main():
             relative='build/validation/hyperram_async_windows_full_image_wide_timeout/sources/'+name
             copy(parent_folder/'sources'/name,relative)
         for name in generation['outputs_sha256']:
-            if name.startswith('tools/')or name=='sim/tb_hyperram_clock_bridge.sv':copy(root/name,name)
+            if name.startswith('tools/')or name=='sim/tb_hyperram_clock_bridge.sv':copy(source_path(root, name),name)
         copy(root/'tools/generate_hyperram_shared_reset_experiment.py','tools/generate_hyperram_shared_reset_experiment.py')
         copy(root/'build/frozen-hyperram-images'/image_sha/'external_memory.bin','build/frozen-hyperram-images/'+image_sha+'/external_memory.bin')
         subprocess.run([sys.executable,str(replay/'tools/generate_hyperram_shared_reset_experiment.py')],check=True,capture_output=True)
@@ -126,7 +128,7 @@ def main():
         generator_replay_verified=True,changed_sources=changed,vendor_sources_unmodified=True,vendor_sva_enabled=False,
         independent_assertions_enabled=True,primary_rtl_modified=False,native_timing_verified=False,cdc_signoff_verified=False,
         tokenizer_instantiation_verified=False,pin_level_ddr_phy_verified=False,rwds_cdc_verified=False,full_system_complete=False,
-        artifacts_sha256={str(p.relative_to(root))if p.is_relative_to(root)else str(p):sha(p)for p in sorted(artifacts)})
+        artifacts_sha256={str(source_relative(p, root))if p.is_relative_to(root)else str(p):sha(p)for p in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     output=root/'build/validation/hyperram-shared-reset.json';output.write_text(json.dumps(result,indent=2)+'\n')
     evidence=root/'build/validation/hyperram-shared-reset-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)

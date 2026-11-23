@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 from verify_native_grpc_corpus_reference import verify_reference
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--candidate',choices=('frame-event-buffer','frame-owned-quiet','payload-event-buffer','open-rpc-reclaim','rpc-completion-flags','receive-capacity-v2','receive-capacity-v4','rpc-success-predicate-v2'),default='frame-event-buffer')
@@ -112,7 +114,7 @@ def main():
         added_module=None if flags else 'grpc_payload_reclaimer' if reclaim else 'axis_pingpong_skid_buffer' if payload else None,
         portable_memory_backend=True,latest_31_module_tokenizer_controller_integrated=False,
         native_timing_verified=False,full_protocol_matrix_verified=False,physical_interfaces_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in archive.iterdir() if p.is_file()},verifier_sha256=sha(Path(__file__)))
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in archive.iterdir() if p.is_file()},verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     audit_name=args.candidate+'-corpus'
     target=root/'build/validation'/(audit_name+'-evidence')/result['key'];target.mkdir(parents=True,exist_ok=False)

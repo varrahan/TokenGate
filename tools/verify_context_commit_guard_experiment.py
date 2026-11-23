@@ -15,6 +15,8 @@ from zipfile import ZipFile
 from verify_two_fpga_application import closure, resources, timing
 from verify_native_grpc_corpus_reference import verify_reference
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -103,7 +105,7 @@ def main():
             if passed:
                 for p in dag.values():
                     n = p.relative_to(source).as_posix()
-                    assert inputs[n] == overrides.get(n, sha(root / n)), (name, n)
+                    assert inputs[n] == overrides.get(n, sha(source_path(root, n))), (name, n)
         for n, h in inputs.items():
             if n.startswith(('build/bidirectional-fixtures/', 'native-vendor/')):
                 assert h == sha(baseline_source / n), (name, n)
@@ -127,7 +129,7 @@ def main():
     failure = json.loads((archive / 'failure.json').read_text())
     assert failure['phase'] == 'axis_promise_violation' and failure['probe'] == 'raw'
     assert failure['valid'] == failure['ready'] == 0 and failure['observed'] is None
-    assert sha(source / 'rtl/http2_enveloped_parser_core.v') == sha(root / 'rtl/http2_enveloped_parser_core.v')
+    assert sha(source / 'rtl/http2_enveloped_parser_core.v') == sha(source_path(root, 'rtl/http2_enveloped_parser_core.v'))
     archive, _, _, _ = read('registered_rx_grant_actual_writer_trace', 'duplex', False)
     failure = json.loads((archive / 'failure.json').read_text())
     assert failure['phase'] == 'duplex_gpu_error'
@@ -180,7 +182,7 @@ def main():
         for n in ('sim/cocotb_two_fpga_enveloped_top.sv', 'sim/cocotb/test_raw_grpc_enveloped.py',
                   'sim/cocotb/test_raw_shutdown_controls.py', 'sim/cocotb/test_raw_peer_controls.py',
                   'sim/cocotb/test_http2_prefill.py', 'sim/cocotb/test_two_fpga_application.py'):
-            assert inputs[n] == sha(root / n), n
+            assert inputs[n] == sha(source_path(root, n)), n
         corpus = verify_reference(root, workload_source, accepted)
 
     if args.receive_counterexample:
@@ -190,7 +192,7 @@ def main():
         for top in ('http2_enveloped_parser_application', 'tokenizer_fpga_memory_subsystem'):
             for p in closure(top, receive_source).values():
                 n = p.relative_to(receive_source).as_posix()
-                assert inputs[n] == overrides.get(n, sha(root / n)), n
+                assert inputs[n] == overrides.get(n, sha(source_path(root, n))), n
         failure = json.loads((archive / 'failure.json').read_text())
         assert failure['phase'] == 'receive_credit_starvation'
         assert failure['native_padding_payload_bytes'] == 65535
@@ -205,17 +207,17 @@ def main():
              'rtl/http2_enveloped_parser_core.v', 'rtl/http2_connection_ingress.v',
              'rtl/http2_controlled_hpack_ingress.v', 'rtl/http2_classified_parser_transport.v',
              'rtl/http2_enveloped_frame_grants.v', 'rtl/http2_owned_pipelined_cancel_windows.v',
-             'rtl/http2_pipelined_cancel_window_store.v']
+             'rtl/http2_pipelined_cancel_window_store.v', 'tools/rtl_paths.py']
     paths += ['build/experiments/checked-close-address/rtl/' + n for n in
               ('grpc_response_headers.v', 'rpc_grpc_http2_return.v', 'rpc_http2_response_partition.v')]
     for n in paths:
-        p = replay / n; p.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(root / n, p)
+        p = replay / n; p.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(source_path(root, n), p)
     for script in paths[:2]:
         subprocess.run([sys.executable, str(replay / script)], check=True, capture_output=True, text=True)
     if args.registered_envelope_scope:
         script = 'tools/generate_registered_envelope_scope_experiment.py'
         shutil.copy2(source / script, replay / script)
-        assert sha(source / script) == sha(root / script)
+        assert sha(source / script) == sha(source_path(root, script))
         subprocess.run([sys.executable, str(replay / script)], check=True, capture_output=True, text=True)
     for n, h in overrides.items():
         assert sha(replay / 'build/experiments' / experiment / n) == h
@@ -224,7 +226,7 @@ def main():
     top = 'http2_enveloped_parser_application'; part = 'xcau15p-ffvb676-2-e'
     native = dict(run=args.native_run, phase='not_yet_verified', routed=False, timing_met=False)
     folder = root / 'build/implementation' / part / args.native_run
-    log = root / ('build/' + args.native_run + '-implementation.log')
+    log = source_path(root, 'build/' + args.native_run + '-implementation.log')
     if (folder / 'source-provenance.json').is_file():
         frozen = folder / 'sources'
         provenance = json.loads((folder / 'source-provenance.json').read_text())
@@ -232,7 +234,7 @@ def main():
         dag = closure(top, frozen); assert len(dag) == 68
         for p in dag.values():
             n = p.relative_to(frozen).as_posix()
-            assert sha(p) == overrides.get(n, sha(root / n)), n
+            assert sha(p) == overrides.get(n, sha(source_path(root, n))), n
         exceptions = [s.strip() for s in (frozen / 'scripts/implement_registered_subsystem.tcl').read_text().splitlines() if s.strip().startswith('set_false_path')]
         assert exceptions == ['set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]', 'set_false_path -to [all_outputs]']
         log_bytes = log.read_bytes(); log_text = log_bytes.decode()

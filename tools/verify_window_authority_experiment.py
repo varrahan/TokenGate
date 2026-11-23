@@ -10,6 +10,8 @@ import sys
 from generate_two_fpga_application import header_end
 from verify_frozen_raw_execution import verify_execution
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -105,8 +107,8 @@ def main():
     paths|={record['source'] for record in cases['files'].values()}
     for n in paths:
         expected=generation['input_sha256'].get(n) or cause_generation['input_sha256'].get(n)
-        assert not expected or sha(root/n)==expected
-        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,p)
+        assert not expected or sha(source_path(root, n))==expected
+        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),p)
     manifests=[('generate_window_cause_experiment.py','window-cause/generation.json',cause_generation),
         ('generate_window_authority_experiment.py','window-authority/generation.json',generation),
         ('generate_window_authority_case.py','window-authority-case/generation.json',json.loads((root/'build/experiments/window-authority-case/generation.json').read_text())),

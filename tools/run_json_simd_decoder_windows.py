@@ -120,6 +120,7 @@ def main():
             run_folder=folder/revision;frozen=run_folder/'sources';run_folder.mkdir();inputs={}
             def freeze(path,name):
                 target=frozen/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target);inputs[name]=sha(target)
+            freeze(root/'tools/rtl_paths.py','tools/rtl_paths.py')
             for path in set(closure('proto_json_decoder',source).values()):freeze(path,'rtl/'+path.name)
             (frozen/'sim').mkdir();testbench=frozen/'sim/tb_decoder.sv';testbench.write_text(tb);inputs['sim/tb_decoder.sv']=sha(testbench)
             for macro in('cdc','memory','fifo'):

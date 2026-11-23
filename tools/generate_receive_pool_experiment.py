@@ -7,6 +7,8 @@ import shutil
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import add_ports, instance, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 POOL=[('input','','receive_pool_lock_valid'),('output','','receive_pool_lock_ready'),
     ('input','[MEMORY_ADDR_WIDTH-1:0]','receive_pool_lock_base'),('input','[MEMORY_ADDR_WIDTH:0]','receive_pool_lock_bytes'),
@@ -24,11 +26,11 @@ def main():
     root=Path(__file__).resolve().parents[1];previous=root/'build/experiments/receive-integration/rtl'
     folder=root/'build/experiments/receive-pool-locked';target=folder/'rtl';target.mkdir(parents=True,exist_ok=True)
     inputs={};sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    for p in previous.glob('*.v'):shutil.copy2(p,target/p.name);inputs[p.relative_to(root).as_posix()]=sha(p)
+    for p in previous.glob('*.v'):shutil.copy2(p,target/p.name);inputs[source_relative(p, root).as_posix()]=sha(p)
     def read(name):
         p=previous/(name+'.v')
-        if not p.exists():p=root/'rtl'/(name+'.v')
-        inputs[p.relative_to(root).as_posix()]=sha(p);return p.read_text()
+        if not p.exists():p=source_path(root, Path('rtl') / (name+'.v'))
+        inputs[source_relative(p, root).as_posix()]=sha(p);return p.read_text()
     def emit(name,text):(target/(name+'.v')).write_text(text)
     def change(text,child,inst,extra,feature=False):
         a,b,p,c=instance(text,child,inst);c.update(extra)
@@ -124,8 +126,8 @@ wire receive_close_owned=rx_close_started&&rx_initialization_is_close&&service_c
     sim=folder/'sim';sim.mkdir(exist_ok=True)
     for p in(previous.parent/'sim').glob('*'):
         if p.is_file():
-            shutil.copy2(p,sim/p.name);inputs[p.relative_to(root).as_posix()]=sha(p)
-    witness=root/'sim/cocotb/receive_pool_witness.py';inputs[witness.relative_to(root).as_posix()]=sha(witness)
+            shutil.copy2(p,sim/p.name);inputs[source_relative(p, root).as_posix()]=sha(p)
+    witness=root/'sim/cocotb/receive_pool_witness.py';inputs[source_relative(witness, root).as_posix()]=sha(witness)
     for filename in ('test_raw_grpc_enveloped.py','test_raw_receive_flow.py'):
         p=sim/filename;s=p.read_text()
         s=replace(s,'import cocotb\n','import cocotb\nfrom receive_pool_witness import observe_receive_pool,pool_counts\n')
@@ -134,7 +136,7 @@ wire receive_close_owned=rx_close_started&&rx_initialization_is_close&&service_c
         s=replace(s,"    Path('acceptance.json').write_text", "    assert pool['receive_grants']==pool['receive_unlocks'] and pool['receive_grants']>0\n    assert pool['receive_memory_commands']==pool['receive_memory_acks']\n    accepted['actual_receive_pool_ownership']=pool\n    Path('acceptance.json').write_text")
         p.write_text(s)
     interleaved=root/'sim/cocotb/test_receive_pool_interleaved.py'
-    inputs[interleaved.relative_to(root).as_posix()]=sha(interleaved)
+    inputs[source_relative(interleaved, root).as_posix()]=sha(interleaved)
     shutil.copy2(interleaved,sim/'test_raw_grpc_duplex.py')
     report=dict(phase='actual_receive_shared_pool_experiment_generated',input_sha256=inputs,generator_sha256=sha(Path(__file__)),
         generated_sha256={p.name:sha(p)for p in target.glob('*.v')},sim_sha256={p.name:sha(p)for p in sim.glob('*')if p.is_file()},

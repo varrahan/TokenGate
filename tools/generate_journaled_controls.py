@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY,named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    def interface(name):return ports((root/'rtl'/(name+'.v')).read_text(),name)
+    def interface(name):return ports((source_path(root, Path('rtl') / (name+'.v'))).read_text(),name)
     jp=interface('http2_control_journal');ep=interface('http2_control_executor')
     public=[p for p in jp if not p[2].startswith('m_')and p[2]!='consume_status']
     names={n for _,_,n in public}
@@ -61,7 +63,7 @@ def main():
         named_instance('http2_control_journal','.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)','journal',jc),
         named_instance('http2_control_executor','.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)','executor',ec),
         'endmodule','`default_nettype wire','']
-    target=root/'rtl/http2_journaled_controls.v';target.write_text('\n'.join(lines))
+    target=source_path(root, 'rtl/http2_journaled_controls.v');target.write_text('\n'.join(lines))
     # A passive component fixture uses the actual pool-owned directory/window
     # service. Production keeps that service external to prevent duplication.
     wp=interface('http2_owned_keyed_windows');cp=interface('http2_journaled_controls')
@@ -120,7 +122,7 @@ def main():
     harness=root/'sim/cocotb_journaled_controls_top.sv';harness.write_text('\n'.join(lines))
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/journaled-controls-generation.json').write_text(json.dumps(dict(phase='generated_journal_executor_join',
-        input_sha256={str(p.relative_to(root)).replace('\\','/'):sha(p)for p in(root/'rtl/http2_control_journal.v',root/'rtl/http2_control_executor.v',Path(__file__))},
+        input_sha256={str(source_relative(p, root)).replace('\\','/'):sha(p)for p in(source_path(root, 'rtl/http2_control_journal.v'),source_path(root, 'rtl/http2_control_executor.v'),Path(__file__))},
         production_sha256=sha(target),harness_sha256=sha(harness),production_window_service_external=True,
         actual_window_service_only_in_fixture=True,full_parser_joined=False,full_system_complete=False),indent=2)+'\n')
     print('Generated journal/executor with external shared windows and actual-service fixture')

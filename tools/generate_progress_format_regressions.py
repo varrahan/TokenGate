@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -17,7 +19,7 @@ def main():
     sources.update({'retire_fault_'+name:('duplex','build/experiments/post-retire-fault-matrix/'+name+'/test_raw_grpc_duplex.py')for name in directory_cases})
     folder=root/'build/experiments/progress-format/regressions';folder.mkdir(parents=True,exist_ok=True);records={}
     for label,(profile,n)in sources.items():
-        source=root/n;text=source.read_text();changes={}
+        source=source_path(root, n);text=source.read_text();changes={}
         needle='await b.directory(4)'
         if needle in text:
             changes['public_directory_format_calls']=text.count(needle)
@@ -32,7 +34,7 @@ def main():
             assert text.count(needle)==1;changes['passive_progress_witness']=1
             text=text.replace(needle,'from progress_format_witness import ProgressFormatWitness as ReceiveFormatWitness')
         fixture=folder/label/source.name;fixture.parent.mkdir(parents=True,exist_ok=True);fixture.write_text(text)
-        records[label]=dict(profile=profile,source=n,source_sha256=sha(source),fixture=str(fixture.relative_to(root)).replace('\\','/'),
+        records[label]=dict(profile=profile,source=n,source_sha256=sha(source),fixture=str(source_relative(fixture, root)).replace('\\','/'),
             fixture_sha256=sha(fixture),changes=changes)
     result=dict(generator_sha256=sha(Path(__file__)),cases=records,
         full_original_protocol_and_fault_stimulus_preserved=True,host_supplies_new_global_progress_geometry=True,

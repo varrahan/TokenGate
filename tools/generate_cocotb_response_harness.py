@@ -3,10 +3,12 @@ import argparse
 from pathlib import Path
 import re
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
-    root=Path(__file__).resolve().parents[1];source=(root/'rtl/generated_response_chunk.v').read_text()
+    root=Path(__file__).resolve().parents[1];source=(source_path(root, 'rtl/generated_response_chunk.v')).read_text()
     header=re.search(r'module\s+generated_response_chunk\s*#\(.*?\)\s*\((.*?)\);',source,re.S)[1]
     ports=[];direction=width=None
     for declaration in re.sub(r'//[^\n]*','',header).split(','):

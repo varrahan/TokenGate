@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 from generate_two_fpga_application import balanced
 
+from rtl_paths import source_path, source_relative
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,7 +22,7 @@ def sha(path):
 
 def closure(top, source_root=ROOT):
     modules = {}
-    for path in (source_root / 'rtl').glob('*.v'):
+    for path in (source_root / 'rtl').rglob('*.v'):
         source = re.sub(r'//[^\n]*|/\*.*?\*/', '', path.read_text(), flags=re.S)
         for name in re.findall(r'\bmodule\s+(\w+)', source):
             assert name not in modules, ('Duplicate module', name)
@@ -77,9 +79,9 @@ def inspect_native(label, top, part, run, available_luts):
         assert {'bpe_tokenizer_engine', 'detokenizer_engine', 'token_packager', 'inverse_tokenizer_partition'} <= dependencies.keys()
         assert not ({'utf8_serialized_chunk', 'proto_json_serializer', 'grpc_stream_store', 'http2_frame_reader'} & dependencies.keys())
     for path in set(dependencies.values()):
-        name = path.relative_to(ROOT).as_posix()
+        name = source_relative(path, ROOT).as_posix()
         assert sha(path) == sha(folder / 'sources' / name) == provenance['files'][name]['sha256'], (label, name)
-    logs = [ROOT / f'build/{run}-implementation.log', ROOT / f'build/{run}-route-resume.log']
+    logs = [source_path(ROOT, f'build/{run}-implementation.log'), source_path(ROOT, f'build/{run}-route-resume.log')]
     logs = [p for p in logs if p.is_file()]
     text = '\n'.join(p.read_text() for p in logs)
     assert '0 Critical Warnings and 0 Errors encountered.' in text
@@ -104,14 +106,14 @@ def inspect_native(label, top, part, run, available_luts):
         for name in ('route_status.rpt', 'routed_drc.rpt'):
             files[Path('native') / label / name] = folder / name
     for path in set(dependencies.values()):
-        relative = path.relative_to(ROOT)
+        relative = source_relative(path, ROOT)
         files[Path('native') / label / 'sources' / relative] = folder / 'sources' / relative
     result = dict(top=top, part=part, native_run=run, resources=measured, available_luts=available_luts,
         native_lut_fit=True, routed=routed, timing=clocks,
         routed_timing_met=routed and clocks['setup_wns_ns'] >= 0 and clocks['hold_whs_ns'] >= 0
             and clocks['setup_failing_endpoints'] == clocks['hold_failing_endpoints'] == 0,
         exact_rtl_modules_verified=list(dependencies), exact_rtl_files_verified=len(set(dependencies.values())),
-        dependency_files_sha256={p.relative_to(ROOT).as_posix(): sha(p) for p in set(dependencies.values())},
+        dependency_files_sha256={source_relative(p, ROOT).as_posix(): sha(p) for p in set(dependencies.values())},
         source_provenance_sha256=sha(folder / 'source-provenance.json'),
         checkpoint_sha256=sha(folder / ('routed.dcp' if routed else 'synthesized.dcp')),
         includes_local_memory_fabric=False, physical_io_and_clock_crossing_verified=False)
@@ -138,10 +140,10 @@ def inspect_blocked_parser(run, crash_log):
     provenance = json.loads((folder / 'source-provenance.json').read_text())
     files = {}
     for path in set(dependencies.values()):
-        relative = path.relative_to(ROOT)
+        relative = source_relative(path, ROOT)
         assert sha(path) == sha(folder / 'sources' / relative) == provenance['files'][relative.as_posix()]['sha256']
         files[Path('native/parser/sources') / relative] = folder / 'sources' / relative
-    log = ROOT / f'build/{run}-implementation.log'
+    log = source_path(ROOT, f'build/{run}-implementation.log')
     text = log.read_text()
     assert 'Synthesis finished with 0 errors, 0 critical warnings' in text
     assert 'Finished Parsing XDC File' in text and 'REGISTERED_SUBSYSTEM_SYNTHESIS_COMPLETE' not in text
@@ -152,7 +154,7 @@ def inspect_blocked_parser(run, crash_log):
         events = [events]
     assert any(event['Id'] == 3077 and 'kintexuplus.dll' in event['Message'] and
                'Enterprise signing level requirements' in event['Message'] for event in events)
-    crash = ROOT / crash_log
+    crash = source_path(ROOT, crash_log)
     assert 'EXCEPTION_ACCESS_VIOLATION' in crash.read_text()
     library = Path('C:/AMDDesignTools/2025.2/Vivado/lib/win64.o/veam/kintexuplus/kintexuplus.dll')
     for source in (log, crash, folder / 'source-provenance.json', events_file):
@@ -163,7 +165,7 @@ def inspect_blocked_parser(run, crash_log):
         code_integrity_event_ids=[3077], code_integrity_evidence_sha256=sha(events_file),
         source_provenance_sha256=sha(folder / 'source-provenance.json'),
         exact_rtl_modules_verified=list(dependencies), exact_rtl_files_verified=len(set(dependencies.values())),
-        dependency_files_sha256={p.relative_to(ROOT).as_posix(): sha(p) for p in set(dependencies.values())},
+        dependency_files_sha256={source_relative(p, ROOT).as_posix(): sha(p) for p in set(dependencies.values())},
         includes_local_memory_fabric=False, physical_io_and_clock_crossing_verified=False)
     return result, files
 
@@ -186,7 +188,7 @@ def main():
     generated = json.loads(generated_file.read_text())
     assert generated['generator_sha256'] == sha(ROOT / 'tools/generate_two_fpga_application.py')
     for name, digest in {**generated['source_sha256'], **generated['generated_sha256']}.items():
-        assert sha(ROOT / name) == digest, ('Generated partition changed', name)
+        assert sha(source_path(ROOT, name)) == digest, ('Generated partition changed', name)
     assert generated['parser_memory_clients_original'] == [*range(5), *range(13, 21)]
     assert generated['tokenizer_memory_clients_original'] == [*range(5, 13), 21]
     native = dict(parser=p, tokenizer=t)
@@ -210,8 +212,8 @@ def main():
         assert len(xml.findall('.//testcase')) == 1 and not xml.findall('.//failure') and not xml.findall('.//error')
         assert xml.find('.//testcase').attrib['name'] == 'separate_fpgas_raw_requests_and_actual_dma_returns'
         for name, digest in {**report['source_sha256'], **report['fixture_sha256']}.items():
-            assert sha(ROOT / name) == digest, ('Execution input changed', name)
-            files[Path(name)] = ROOT / name
+            assert sha(source_path(ROOT, name)) == digest, ('Execution input changed', name)
+            files[Path(name)] = source_path(ROOT, name)
         assert len(report['fixture_sha256']) == 7
         assert (acceptance['packets'], acceptance['headers'], acceptance['messages'], acceptance['token_ids'],
                 acceptance['response_chunks'], acceptance['response_bytes']) == (38, 21, 16, 2828, 2828, 144686)

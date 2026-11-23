@@ -9,6 +9,8 @@ import sys
 from generate_http2_frame_vectors import MAGIC, Reference, frame
 from generate_http2_transport_vectors import Payload
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -42,7 +44,7 @@ def main():
     assert any(row[0]==3 and row[5]==4 and row[6]&1 for row in controls),'Missing SETTINGS ACK'
     assert any(row[0]==5 and row[6]&1 for row in controls),'Missing PING ACK'
     assert any(row[0]==7 and row[7]==0 for row in controls) and any(row[0]==7 and row[7]!=0 for row in controls)
-    hashes={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest()for p in
+    hashes={source_relative(p, root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest()for p in
         (Path(__file__),generator,root/'tools/generate_http2_frame_vectors.py')}
     result=dict(phase='native_wire_payload_references_passed',inputs_sha256=hashes,packets=packets,
         semantic_events=len(events),control_events=len(controls),events=events)

@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 from verify_native_grpc_corpus_reference import verify_reference
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -71,7 +73,7 @@ def main():
     tools = [Path(__file__), root / 'tools/verify_native_grpc_corpus_reference.py',
              root / 'tools/verify_two_fpga_application.py', root / 'tools/generate_two_fpga_application.py',
              root / 'tools/generate_bidirectional_application.py']
-    artifacts = {path.relative_to(root).as_posix(): sha(path) for path in
+    artifacts = {source_relative(path, root).as_posix(): sha(path) for path in
                  [*tools, parent_path, component_path, launch_path, *archive.iterdir()] if path.is_file()}
     result = dict(phase='json_simd_complete_native_corpus_verified',
         verified_utc=datetime.now(timezone.utc).isoformat(), snapshot=args.name,
@@ -91,7 +93,7 @@ def main():
     evidence = root / 'build/validation/json-simd-corpus-evidence' / result['key']
     evidence.mkdir(parents=True, exist_ok=False)
     for path in tools + [component_path, launch_path]:
-        target = evidence / path.relative_to(root)
+        target = evidence / source_relative(path, root)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
     output = root / 'build/validation/json-simd-corpus.json'

@@ -5,6 +5,8 @@ from pathlib import Path
 import shutil
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 FRONTEND='''    wire [63:0] window_data;
     wire [3:0] window_count,window_consumed,json_consumed,proto_consumed;
@@ -56,7 +58,7 @@ def main():
     inputs={};outputs={}
     for module,digest in audit['executed_parser_sha256'].items():
         path=source/(module+'.v');assert sha(path)==digest
-        inputs[path.relative_to(root).as_posix()]=digest;shutil.copy2(path,rtl/path.name)
+        inputs[source_relative(path, root).as_posix()]=digest;shutil.copy2(path,rtl/path.name)
     def replace_once(text,before,after):
         assert text.count(before)==1,(before[:90],text.count(before));return text.replace(before,after)
     path=rtl/'proto_json_decoder.v';text=path.read_text()
@@ -90,7 +92,7 @@ def main():
         '    assign packet_status=status;\n    assign ascii_discard_ready=!rst&&state==NORMAL&&pending_count==0&&utf8_remaining==0&&status==0;')
     path.write_text(text)
     for name in('axis_compacting_window.v','json_simd_scanner.v'):
-        path=root/'rtl'/name;inputs[path.relative_to(root).as_posix()]=sha(path);shutil.copy2(path,rtl/name)
+        path=source_path(root, Path('rtl') / (name));inputs[source_relative(path, root).as_posix()]=sha(path);shutil.copy2(path,rtl/name)
     for path in sorted(rtl.glob('*.v')):outputs['rtl/'+path.name]=sha(path)
     dependencies=closure('http2_enveloped_parser_application',output)
     assert {'axis_compacting_window','json_simd_scanner','speculative_json_fsm','json_string_normalizer'}<=dependencies.keys()

@@ -13,6 +13,8 @@ from zipfile import ZipFile
 
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -41,7 +43,7 @@ def main():
     part = 'xcsu35p-sbvb625-2-e' if args.tokenizer else 'xcau15p-ffvb676-2-e'
     root = Path(__file__).resolve().parents[1]
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
-    direct_path = root / ('build/validation/' + variant + '-experiment.json')
+    direct_path = source_path(root, 'build/validation/' + variant + '-experiment.json')
     direct_bytes = direct_path.read_bytes()
     direct = json.loads(direct_bytes)
     assert direct['phase'] == ('actual_global_receive_format_and_shutdown_verified' if args.receive_format else 'pending_window_idle_guard_joined_verified' if args.pending_idle else 'actual_post_commit_retirement_directed_verified' if args.post_commit_retire else 'packer_keep_formal_and_joined_verified' if args.packer_keep else 'actual_local_credit_cancel_and_reopen_verified' if args.local_cancel else
@@ -59,7 +61,7 @@ def main():
     assert len(dag) == modules
     hashes = {n: sha(p) for n, p in dag.items()}
     assert hashes == direct['executed_tokenizer_sha256' if args.tokenizer else 'executed_parser_sha256']
-    output = root / ('build/validation/' + artifact + '-native-harness-replay.v')
+    output = source_path(root, 'build/validation/' + artifact + '-native-harness-replay.v')
     subprocess.run([sys.executable, str(frozen / 'tools/generate_parser_timing_harness.py'),
         '--source', str(frozen / 'rtl' / (top + '.v')),
         '--top', top,
@@ -116,13 +118,13 @@ def main():
         physical_board_timing_verified=False, full_system_complete=False, verifier_sha256=sha(Path(__file__)))
     result['frozen_tokenizer_sha256' if args.tokenizer else 'frozen_parser_sha256'] = hashes
     key = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
-    evidence = root / ('build/validation/' + artifact + '-native-evidence') / key
+    evidence = source_path(root, Path('build/validation/' + artifact + '-native-evidence') / (key))
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / 'verified.json').write_text(json.dumps(result, indent=2) + '\n')
     (evidence / 'direct-audit.json').write_bytes(direct_bytes)
     shutil.copy2(Path(__file__), evidence / Path(__file__).name)
     result.update(key=key, evidence_folder=str(evidence))
-    (root / ('build/validation/' + artifact + '-native-experiment.json')).write_text(json.dumps(result, indent=2) + '\n')
+    (source_path(root, 'build/validation/' + artifact + '-native-experiment.json')).write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(dict(phase=result['phase'], key=key, resources=area, timing=clocks, timing_met=result['timing_met'])))
 
 

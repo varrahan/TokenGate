@@ -16,6 +16,8 @@ import tiktoken
 from verify_joint_hyperram_grpc_native import varint
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--candidate',choices=('rpc-stream-refusal-v7','rpc-registered-frame-select-v1'),default='rpc-stream-refusal-v7');args=ap.parse_args()
@@ -37,7 +39,7 @@ def main():
     for token in ids:
         text=encoding.decode_single_token_bytes(token);payload=varint(17<<3|2)+varint(len(text))+text
         expected+=b'\0'+len(payload).to_bytes(4,'big')+payload
-    test_name='sim/cocotb/test_rpc_refusal_gpu.py';current=(root/test_name).read_bytes().decode()
+    test_name='sim/cocotb/test_rpc_refusal_gpu.py';current=(source_path(root, test_name)).read_bytes().decode()
     delay='        await cycles(d,2)\n';assert current.count(delay)==1
     runs={'gpu-first':'rpc_stream_refusal_v7_gpu_first_20261122','reset-first':'rpc_stream_refusal_v7_reset_first_v2_20261122'}
     if registered:runs={'gpu-first':'rpc_registered_select_v1_gpu_first_20261122','reset-first':'rpc_registered_select_v1_reset_first_20261122'}
@@ -147,7 +149,7 @@ def main():
         refusal_memory_faults_with_gpu_ownership_verified=False,retained_reset_verified=False,
         native_vendor_runtime_verified=False,full_protocol_fault_matrix_verified=False,
         whole_rpc_gpu_maintenance_authority_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in sorted(artifacts)},verifier_sha256=sha(Path(__file__)))
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in sorted(artifacts)},verifier_sha256=sha(Path(__file__)))
     if registered:result.update(candidate=args.candidate,registered_selection_unit_audit_key=selection_audit['key'],
         phase='registered_selection_gpu_both_actual_wire_orders_verified')
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]

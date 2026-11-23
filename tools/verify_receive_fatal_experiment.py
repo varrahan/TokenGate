@@ -13,6 +13,8 @@ import tiktoken
 from verify_native_grpc_corpus_reference import varint
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -60,7 +62,7 @@ def main():
             current_dag = hashes
             for path in [*dag.values(), *tokenizer.values()]:
                 n = path.relative_to(source).as_posix()
-                assert inputs[n] == overrides.get(n, sha(root / n)), n
+                assert inputs[n] == overrides.get(n, sha(source_path(root, n))), n
             assert inputs['sim/cocotb_two_fpga_enveloped_top.sv'] == generation['sim_sha256']['cocotb_two_fpga_enveloped_top.sv']
             if positive:
                 assert inputs['sim/cocotb/test_raw_grpc_enveloped.py'] == generation['sim_sha256']['test_raw_grpc_enveloped.py']
@@ -118,7 +120,7 @@ def main():
         'tools/generate_two_fpga_application.py', 'tools/generate_bidirectional_application.py'}
     assert generation['generator_sha256'] == sha(root / 'tools/generate_receive_fatal_experiment.py')
     for name in sorted(replay_inputs):
-        path = root / name
+        path = source_path(root, name)
         assert name not in generation['input_sha256'] or sha(path) == generation['input_sha256'][name]
         destination = replay / name
         destination.parent.mkdir(parents=True, exist_ok=True)

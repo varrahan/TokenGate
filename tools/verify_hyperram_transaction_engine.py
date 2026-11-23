@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -25,7 +27,7 @@ def main():
             assert sha(archive / 'execution-sources' / path) == digest
             # The original integration run predates the driver's clock-profile option.
             if index < 5 or path != 'scripts/run_hyperram_engine_tests.py':
-                assert sha(root / path) == digest, path
+                assert sha(source_path(root, path)) == digest, path
         xml = ET.parse(archive / 'results.xml')
         assert len(xml.findall('.//testcase')) == 1
         assert not xml.findall('.//failure') and not xml.findall('.//error')
@@ -68,7 +70,7 @@ def main():
     assert generation['generator_sha256'] == sha(root / 'tools/generate_axi_hyperram_engine_fixture.py')
     assert generation['fixture_sha256'] == sha(root / 'sim/cocotb_axi_hyperram_engine_top.sv')
     assert generation['port_parser_sha256'] == sha(root / 'tools/generate_bidirectional_application.py')
-    assert all(sha(root / p) == digest for p, digest in generation['input_sha256'].items())
+    assert all(sha(source_path(root, p)) == digest for p, digest in generation['input_sha256'].items())
     result = dict(phase='hyperram_word_engine_verified', verified_utc=datetime.now(timezone.utc).isoformat(),
         cases=cases, structural_log_sha256=sha(structural), fixture_generation=generation,
         manufacturer_pdf_sha256=sha(root / 'tmp/pdfs/infineon-s27ks0642.pdf'),

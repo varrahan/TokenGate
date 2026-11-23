@@ -13,6 +13,8 @@ import xml.etree.ElementTree as ET
 from hyperframe.frame import SettingsFrame,PingFrame
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--snapshot-name',default='committed_controls_actual_windows_faults')
@@ -74,7 +76,7 @@ def main():
     result=dict(phase='committed_controls_functional_passed_native_pending',verified_utc=datetime.now(timezone.utc).isoformat(),
         acceptance=accepted,execution_inputs=len(inputs),production_modules=list(production),actual_service_modules=list(service),
         actual_fixture_modules=8,production_service_external_verified=True,single_actual_directory_verified=True,
-        exact_wrapper_and_harness_regeneration_verified=True,current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h],
+        exact_wrapper_and_harness_regeneration_verified=True,current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h],
         raw_parser_joined=False,non_window_callbacks_supplied_by_fixture=True,full_system_complete=False,verifier_sha256=sha(Path(__file__)))
     if not args.functional_only:
         folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/args.native_run;frozen=folder/'sources'
@@ -87,7 +89,7 @@ def main():
         implementation=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
         assert[line.strip()for line in implementation.splitlines()if line.strip().startswith('set_false_path')]==[
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']
-        log=root/f'build/{args.native_run}-implementation.log';text=log.read_text()
+        log=source_path(root, f'build/{args.native_run}-implementation.log');text=log.read_text()
         assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=http2_journaled_controls PART=xcsu35p-sbvb625-2-e'in text
         assert '0 Critical Warnings and 0 Errors encountered.'in text and 'ERROR: [Synth'not in text
         area=resources(folder/'routed_utilization.rpt');clocks=timing(folder/'routed_timing.rpt')

@@ -7,6 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from rtl_paths import source_path, source_relative
+
 
 def replace_once(text, old, new):
     assert text.count(old) == 1, old
@@ -15,7 +17,7 @@ def replace_once(text, old, new):
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    source = root / 'rtl/http2_send_window_store.v'
+    source = source_path(root, 'rtl/http2_send_window_store.v')
     text = source.read_text().replace('http2_send_window_store', 'http2_lifecycle_send_window_store')
     for old, new in (
         ('input wire [2:0] req_op', 'input wire [3:0] req_op'),
@@ -41,20 +43,20 @@ def main():
         '// lifetime (the whole pool for INITIAL_WINDOW). No fixed stream array exists.\n'
         '// Window bit 127 persists send closure without retiring the actual RPC.\n'
         '// CLOSE_SEND is idempotent; settings skip these windows; no DATA is granted.')
-    target = root / 'rtl/http2_lifecycle_send_window_store.v'
+    target = source_path(root, 'rtl/http2_lifecycle_send_window_store.v')
     target.write_text(text)
-    owned = root / 'rtl/http2_owned_send_windows.v'
+    owned = source_path(root, 'rtl/http2_owned_send_windows.v')
     joined = owned.read_text().replace('http2_owned_send_windows', 'http2_owned_lifecycle_windows')
     joined = joined.replace('http2_send_window_store #(', 'http2_lifecycle_send_window_store #(')
     for name in ('window_req_op', 'window_rsp_op', 'saved_req_op', 'engine_rsp_op'):
         joined = replace_once(joined, '[2:0] ' + name, '[3:0] ' + name)
     joined = joined.replace('send-closed state and image leases remain required.', 'closure scheduling and image leases remain required.')
-    joined_target = root / 'rtl/http2_owned_lifecycle_windows.v'
+    joined_target = source_path(root, 'rtl/http2_owned_lifecycle_windows.v')
     joined_target.write_text(joined)
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     report = dict(phase='generated_retained_send_closed_windows',
-        input_sha256={p.relative_to(root).as_posix(): sha(p) for p in (source, owned, Path(__file__))},
-        generated_sha256={p.relative_to(root).as_posix(): sha(p) for p in (target, joined_target)},
+        input_sha256={source_relative(p, root).as_posix(): sha(p) for p in (source, owned, Path(__file__))},
+        generated_sha256={source_relative(p, root).as_posix(): sha(p) for p in (target, joined_target)},
         op_width=4, close_send_op=8, window_send_closed_bit=127,
         actual_network_closure_scheduling_integrated=False, full_system_complete=False)
     (root / 'build/validation/lifecycle-send-window-generation.json').write_text(json.dumps(report, indent=2) + '\n')

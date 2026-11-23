@@ -6,6 +6,8 @@ import shutil
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -24,7 +26,7 @@ def main():
     assert old.count(before)==1
     new=old.replace(before,after);assert new.replace(after,before)==old
     path.write_bytes(new.encode())
-    fifo=root/'rtl/axis_pingpong_skid_buffer.v';shutil.copy2(fifo,target/'rtl'/fifo.name)
+    fifo=source_path(root, 'rtl/axis_pingpong_skid_buffer.v');shutil.copy2(fifo,target/'rtl'/fifo.name)
     dependencies=closure('http2_enveloped_parser_application',target);assert len(dependencies)==77
     for name,p in dependencies.items():
         if name not in ('http2_axis_ingress','axis_pingpong_skid_buffer'):assert sha(p)==units['candidate_parser_sha256'][name]

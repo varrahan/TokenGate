@@ -7,13 +7,15 @@ from generate_bidirectional_application import ports
 from generate_two_fpga_application import add_ports,instance,named_instance,rename
 from generate_lifecycle_send_windows import replace_once
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sources=[];targets=[]
     def read(n):
-        p=root/f'rtl/{n}.v';sources.append(p);return p.read_text()
+        p=source_path(root, f'rtl/{n}.v');sources.append(p);return p.read_text()
     def emit(n,text):
-        p=root/f'rtl/{n}.v';p.write_text(text);targets.append(p)
+        p=source_path(root, f'rtl/{n}.v');p.write_text(text);targets.append(p)
     controller=rename(read('http2_stream_shutdown'),'http2_stream_shutdown','http2_enveloped_shutdown')
     failure_ports=[('input','','return_envelope_recovery'),('input','[7:0]','return_envelope_status'),
         ('input','[7:0]','return_envelope_memory_status')]
@@ -55,8 +57,8 @@ def main():
     emit('http2_enveloped_parser_application',application)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/http2-enveloped-parser-generation.json').write_text(json.dumps(dict(
-        phase='generated_raw_rpc_response_envelope',input_sha256={p.relative_to(root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
-        generated_sha256={p.relative_to(root).as_posix():sha(p)for p in targets},parser_memory_clients=17,
+        phase='generated_raw_rpc_response_envelope',input_sha256={source_relative(p, root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
+        generated_sha256={source_relative(p, root).as_posix():sha(p)for p in targets},parser_memory_clients=17,
         typed_raw_reset_carries_envelope_memory_failure=True,full_system_complete=False),indent=2)+'\n')
     print('Generated raw Parser with actual RPC response HEADERS/DATA/trailers and scoped reset ownership')
 

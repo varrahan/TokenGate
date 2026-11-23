@@ -6,6 +6,8 @@ import re
 import shutil
 import sys
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sys.path.insert(0,str(root/'scripts'))
@@ -22,7 +24,7 @@ def main():
             assert report['phase']=='passed'and report['returncode']==0,(suite,simulator)
             assert report['runner_sha256']==sha(root/'scripts/run_wsl_sv_tests.py')
             for name,digest in report['source_sha256'].items():
-                assert sha(root/name)==digest,(suite,name)
+                assert sha(source_path(root, name))==digest,(suite,name)
                 if name.startswith('rtl/'):assert sha(native/'sources'/name)==digest,(run,name)
             for name,digest in report['fixture_sha256'].items():
                 assert sha(root/'build'/SUITES[suite][0]/name)==digest,(suite,name)
@@ -32,7 +34,7 @@ def main():
                                 fixtures_verified=len(report['fixture_sha256']),report_sha256=sha(path)))
         assert pair[0]['source_sha256']==pair[1]['source_sha256']
         assert pair[0]['fixture_sha256']==pair[1]['fixture_sha256']
-    log=(root/f'build/{run}-implementation.log').read_text()
+    log=(source_path(root, f'build/{run}-implementation.log')).read_text()
     assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE'in log
     assert '0 Critical Warnings and 0 Errors encountered.'in log
     assert 'Found timing loop'not in log and 'ERROR: [Synth'not in log
@@ -57,7 +59,7 @@ def main():
         for name,digest in{**report['source_sha256'],'scripts/run_wsl_sv_tests.py':report['runner_sha256']}.items():
             destination=native/'regression-sources'/name;destination.parent.mkdir(parents=True,exist_ok=True)
             if destination.exists():assert sha(destination)==digest
-            else:shutil.copy2(root/name,destination)
+            else:shutil.copy2(source_path(root, name),destination)
         for name,digest in report['fixture_sha256'].items():
             destination=native/'regression-fixtures'/suite/name;destination.parent.mkdir(parents=True,exist_ok=True)
             if destination.exists():assert sha(destination)==digest

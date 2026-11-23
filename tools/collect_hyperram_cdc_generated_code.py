@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import shutil
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];approved=Path.home()/'development/hardware/parser'
@@ -23,7 +25,7 @@ def main():
         if target.exists():assert sha(target)==sha(source)
         else:shutil.copy2(source,target)
         records[label]=dict(snapshot=name,binary_sha256=report['binary_sha256'],cpp_sha256=sha(source),
-            cpp_file=target.relative_to(root).as_posix(),pending_response_pop_calls=actual,
+            cpp_file=source_relative(target, root).as_posix(),pending_response_pop_calls=actual,
             source_inputs_sha256=json.loads((archive/'inputs.json').read_text()))
     record=dict(phase='generated_testbench_queue_pop_difference_verified',
         observed_utc=datetime.now(timezone.utc).isoformat(),records=records,

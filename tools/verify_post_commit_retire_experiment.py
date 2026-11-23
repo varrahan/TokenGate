@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -50,7 +52,7 @@ def main():
         parser_hashes,tokenizer_hashes=hashes
         for top in cache[signature].values():
             for n,p in top.items():
-                assert inputs[p.as_posix()]==generation['generated_sha256'].get(p.name,sha(root/p))
+                assert inputs[p.as_posix()]==generation['generated_sha256'].get(p.name,sha(source_path(root, p)))
         previous=baseline['executions']['credit_cancel']['inputs_sha256']
         for n in ('build/bidirectional-fixtures/memory.mem','build/bidirectional-fixtures/reference_cases.json',
                   'build/bidirectional-fixtures/response_reference.json','sim/cocotb_two_fpga_enveloped_top.sv'):
@@ -122,8 +124,8 @@ def main():
     paths=set(generation['input_sha256'])|{'tools/generate_post_commit_retire_experiment.py',
         'tools/generate_receive_pool_experiment.py','tools/generate_two_fpga_application.py','tools/generate_bidirectional_application.py'}
     for n in paths:
-        assert n not in generation['input_sha256'] or sha(root/n)==generation['input_sha256'][n]
-        target=replay/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,target)
+        assert n not in generation['input_sha256'] or sha(source_path(root, n))==generation['input_sha256'][n]
+        target=replay/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),target)
     subprocess.run([sys.executable,str(replay/'tools/generate_post_commit_retire_experiment.py')],check=True,capture_output=True,text=True)
     replayed=json.loads((replay/'build/experiments/post-commit-retire/generation.json').read_text())
     assert replayed==generation

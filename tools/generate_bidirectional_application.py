@@ -3,6 +3,8 @@ import argparse
 from pathlib import Path
 import re
 
+from rtl_paths import source_path
+
 
 def ports(source, module):
     header=re.search(r'module\s+'+module+r'\s*#\(.*?\)\s*\((.*?)\);',source,re.S)[1]
@@ -19,8 +21,8 @@ def ports(source, module):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--rtl',type=Path,required=True);parser.add_argument('--harness',type=Path,required=True);args=parser.parse_args()
     root=Path(__file__).resolve().parents[1]
-    fp=ports((root/'rtl/http2_grpc_prefill.v').read_text(),'http2_grpc_prefill')
-    rp=ports((root/'rtl/rpc_generated_response.v').read_text(),'rpc_generated_response')
+    fp=ports((source_path(root, 'rtl/http2_grpc_prefill.v')).read_text(),'http2_grpc_prefill')
+    rp=ports((source_path(root, 'rtl/rpc_generated_response.v')).read_text(),'rpc_generated_response')
     memory={name for _,_,name in fp if name.startswith('mem_')}
     controls={name for _,_,name in fp if name.startswith('control_')and not name.startswith('control_event_')}
     gated={'s_axis_rx_tvalid','s_axis_rx_tready','command_valid','command_ready','stream_cfg_valid','stream_cfg_ready',

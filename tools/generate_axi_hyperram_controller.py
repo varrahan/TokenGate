@@ -4,11 +4,13 @@ import json
 from pathlib import Path
 from generate_bidirectional_application import ports
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     names=('axi_hyperram_bridge','hyperram_transaction_engine','hyperram_startup')
-    paths={n:root/'rtl'/(n+'.v')for n in names}
+    paths={n:source_path(root, Path('rtl') / (n+'.v'))for n in names}
     fp,ep,sp=(ports(paths[n].read_text(),n)for n in names)
     public=[(d,w.replace('ADDR_WIDTH','23'),n)for d,w,n in fp if n in('clk','rst')or n.startswith('s_axi_')]
     public +=[(d,w,n)for d,w,n in ep if n.startswith('phy_')]
@@ -52,8 +54,8 @@ def main():
     remap={'rst':'engine_reset','enable':'engine_enable','cfg_latency':'engine_latency','cfg_fixed_latency':'engine_fixed_latency','idle':'engine_idle'}
     lines +=['hyperram_transaction_engine #(.MEMORY_CLOCK_HZ(MEMORY_CLOCK_HZ)) engine(',
         ',\n'.join(f'    .{n}({remap.get(n,n)})'for _,_,n in ep),');','endmodule','`default_nettype wire','']
-    target=root/'rtl/axi_hyperram_controller.v';target.write_text('\n'.join(lines))
-    result=dict(generator_sha256=sha(Path(__file__)),input_sha256={p.relative_to(root).as_posix():sha(p)for p in paths.values()},
+    target=source_path(root, 'rtl/axi_hyperram_controller.v');target.write_text('\n'.join(lines))
+    result=dict(generator_sha256=sha(Path(__file__)),input_sha256={source_relative(p, root).as_posix():sha(p)for p in paths.values()},
         port_parser_sha256=sha(root/'tools/generate_bidirectional_application.py'),output_sha256=sha(target),
         same_clock_assembly=True,pin_level_phy_present=False,full_system_complete=False)
     folder=root/'build/hyperram-startup';folder.mkdir(parents=True,exist_ok=True)

@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -30,11 +32,11 @@ def main():
     run='axis_frame_arbiter_scu35_initial';native=root/'build/implementation/xcsu35p-sbvb625-2-e'/run;frozen=native/'sources'
     provenance=json.loads((native/'source-provenance.json').read_text())
     for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
-    name='rtl/axis_frame_arbiter.v';assert sha(frozen/name)==inputs[name]==sha(root/name)
+    name='rtl/axis_frame_arbiter.v';assert sha(frozen/name)==inputs[name]==sha(source_path(root, name))
     script=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
     assert[line.strip()for line in script.splitlines()if line.strip().startswith('set_false_path')]==[
         'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']
-    log=root/f'build/{run}-implementation.log';assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=axis_frame_arbiter PART=xcsu35p-sbvb625-2-e'in log.read_text()
+    log=source_path(root, f'build/{run}-implementation.log');assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=axis_frame_arbiter PART=xcsu35p-sbvb625-2-e'in log.read_text()
     area=resources(native/'routed_utilization.rpt');clocks=timing(native/'routed_timing.rpt')
     assert area['registers']==3 and area['bram36']==area['bram18']==area['uram']==area['dsps']==0
     assert clocks['setup_wns_ns']>=0 and clocks['hold_whs_ns']>=0 and clocks['setup_failing_endpoints']==clocks['hold_failing_endpoints']==0

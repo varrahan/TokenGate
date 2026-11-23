@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    base = root / 'rtl/grpc_stream_store.v'
+    base = source_path(root, 'rtl/grpc_stream_store.v')
     public = ports(base.read_text(), 'grpc_stream_store')
     responses = [(d, w, n) for d, w, n in public if n.startswith('rsp_') and d == 'output']
     command = [(d, w, n) for d, w, n in public if d == 'input' and (n.startswith('req_') and n != 'req_valid' or n.startswith('cfg_pool_'))]
@@ -93,11 +95,11 @@ def main():
     lines += [f'                    {n}<=backend_{n};' for _, _, n in responses]
     lines += ['                end', '                state<=IDLE;', '            end',
         '            default:state<=IDLE;', '        endcase', '    end', 'end', 'endmodule', '`default_nettype wire', '']
-    target = root / 'rtl/grpc_leased_stream_store.v'
+    target = source_path(root, 'rtl/grpc_leased_stream_store.v')
     target.write_text('\n'.join(lines))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     (root / 'build/validation/leased-stream-store-generation.json').write_text(json.dumps(dict(
-        phase='generated_cached_directory_lease', inputs_sha256={p.relative_to(root).as_posix(): sha(p) for p in (base, Path(__file__))},
+        phase='generated_cached_directory_lease', inputs_sha256={source_relative(p, root).as_posix(): sha(p) for p in (base, Path(__file__))},
         generated_sha256=sha(target), cached_response_leases=1, live_rpc_records='runtime external pool',
         whole_rpc_gpu_image_leases_verified=False, full_system_complete=False), indent=2) + '\n')
     print('Generated cached directory lease with independent control results and physical record/pool fences')

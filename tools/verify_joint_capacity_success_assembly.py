@@ -11,6 +11,8 @@ from generate_hyperram_cdc_timing_harness import ports
 from verify_dual_fpga_hyperram_integration import verify_order
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--name',required=True);args=ap.parse_args()
@@ -47,7 +49,7 @@ def main():
     for n,p in expected.items():
         certificate=certificates[n];native=folder/'joint/rtl'/(n+'.v')
         digest=(capacity['executed_parser_sha256'] if p.parent.parent==cap_source else success['executed_parser_sha256'])[n]
-        assert sha(p)==certificate['portable_raw_sha256']==digest and certificate['portable_source']==p.relative_to(root).as_posix()
+        assert sha(p)==certificate['portable_raw_sha256']==digest and certificate['portable_source']==source_relative(p, root).as_posix()
         assert sha(native)==certificate['native_sha256']
         verify_order(p.read_text(),native.read_text(),certificate['declaration_order_certificate'])
         assert ports(p.read_text(),n)==ports(native.read_text(),n)
@@ -86,7 +88,7 @@ def main():
         native_runtime_started=False,native_runtime_verified=False,code_integrity_runtime_block_verified=True,
         native_timing_verified=False,full_protocol_fault_matrix_verified=False,full_system_complete=False,
         production_project_sha256=sha(folder/'production.prj'),elaboration_log_sha256=sha(folder/'xelab.log'),
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in [folder/'report.json',folder/'generation.json',folder/'production.prj',folder/'production.log',folder/'xelab.log',root/'build/validation/joint-capacity-success-native-runtime-block.json']},
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in [folder/'report.json',folder/'generation.json',folder/'production.prj',folder/'production.log',folder/'xelab.log',root/'build/validation/joint-capacity-success-native-runtime-block.json']},
         verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/joint-capacity-success-native-assembly-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)

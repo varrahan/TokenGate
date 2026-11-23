@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--bootstrap-only',action='store_true')
@@ -91,8 +93,8 @@ def main():
         details[label]=dict(snapshot=name,acceptance=accepted,execution_sources=len(report['source_sha256']),
             execution_fixtures=len(report['fixture_sha256']),parser_modules=list(active),tokenizer_modules=list(token),
             exact_join_and_harness_regeneration_verified=True,single_actual_directory_verified=True,
-            current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h],
-            current_active_rtl_matches=all(sha(root/p.relative_to(executed))==sha(p)for p in active.values()))
+            current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h],
+            current_active_rtl_matches=all(sha(source_path(root, p.relative_to(executed)))==sha(p)for p in active.values()))
         for relative in('report.json','acceptance.json','results.xml','simulation.log','build.log','snapshot.json','native-reference.json'):
             files[Path(label)/'reports'/relative]=archive/relative
         files[Path(label)/'execution/scripts/run_cocotb_snapshot.py']=executed/'scripts/run_cocotb_snapshot.py'

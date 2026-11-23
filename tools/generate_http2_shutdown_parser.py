@@ -7,13 +7,15 @@ from generate_bidirectional_application import ports
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import MEMORY,header_end,instance,named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sources=[];targets=[]
     def read(n):
-        p=root/f'rtl/{n}.v';sources.append(p);return p.read_text()
+        p=source_path(root, f'rtl/{n}.v');sources.append(p);return p.read_text()
     def emit(n,text):
-        p=root/f'rtl/{n}.v';p.write_text(text);targets.append(p)
+        p=source_path(root, f'rtl/{n}.v');p.write_text(text);targets.append(p)
     core=read('http2_classified_parser_core');cp=ports(read('http2_shutdown_classified_controls'),'http2_shutdown_classified_controls')
     rp=ports(read('rpc_grpc_cancellable_return'),'rpc_grpc_cancellable_return')
     sp=ports(read('http2_stream_shutdown'),'http2_stream_shutdown')
@@ -182,8 +184,8 @@ end''')
     emit('http2_shutdown_parser_application','\n'.join(lines))
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/http2-shutdown-parser-generation.json').write_text(json.dumps(dict(
-        phase='generated_actual_raw_shutdown_join',input_sha256={p.relative_to(root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
-        generated_sha256={p.relative_to(root).as_posix():sha(p)for p in targets},parser_memory_clients=17,
+        phase='generated_actual_raw_shutdown_join',input_sha256={source_relative(p, root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
+        generated_sha256={source_relative(p, root).as_posix():sha(p)for p in targets},parser_memory_clients=17,
         external_cancel_fixture_removed=True,actual_callback_retirement_verified=False,full_system_complete=False),indent=2)+'\n')
     print('Generated raw shutdown Parser with actual shared return, directory, history and peer owners')
 

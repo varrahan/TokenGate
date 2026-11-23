@@ -8,6 +8,8 @@ import shutil
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import add_ports, instance, named_instance, MEMORY
 
+from rtl_paths import source_path, source_relative
+
 
 CONFIG = [('input', '[MEMORY_ADDR_WIDTH-1:0]', 'cfg_receive_connection_base'),
           ('input', '[MEMORY_ADDR_WIDTH:0]', 'cfg_receive_connection_bytes'),
@@ -36,8 +38,8 @@ def main():
     inputs = {}
     def source(name):
         p = previous / (name + '.v')
-        if not p.exists(): p = root / 'rtl' / (name + '.v')
-        inputs[p.relative_to(root).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
+        if not p.exists(): p = source_path(root, Path('rtl') / (name + '.v'))
+        inputs[source_relative(p, root).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
         return p.read_text()
     def save(name, text): (target / (name + '.v')).write_text(text)
     def connect(text, child, inst, extra):
@@ -109,7 +111,7 @@ assign receive_replay_stream=j_m_stream;assign receive_replay_user=j_m_user;''')
         extra_lines.append('reg '+w+' owned_'+n+';')
     extra_lines += ['always @(posedge clk)begin', 'if(rst)begin '+''.join('owned_'+n+'<=0;' for _,_,n in CONFIG)+'end',
         'else if(command_valid&&command_ready||control_valid&&control_ready||s_axis_rx_tvalid&&s_axis_rx_tready&&!rx_active)begin '+''.join('owned_'+n+'<='+n+';' for _,_,n in CONFIG)+'end end']
-    cp = ports((root/'rtl/http2_receive_flow_controller.v').read_text(), 'http2_receive_flow_controller')
+    cp = ports((source_path(root, 'rtl/http2_receive_flow_controller.v')).read_text(), 'http2_receive_flow_controller')
     cc={}; declared=set()
     def wire(w,n):
         if n not in declared: extra_lines.append('wire '+w+' '+n+';'); declared.add(n)
@@ -208,7 +210,7 @@ assign receive_replay_stream=j_m_stream;assign receive_replay_user=j_m_user;''')
             w=next(w for _,w,x in ports(source('rpc_grpc_http2_return'),'rpc_grpc_http2_return') if x==n)
             wire(w,'ordinary_'+n);c[n]='ordinary_'+n
     text=text[:a]+named_instance('rpc_grpc_http2_return',p,'reverse',c)+text[b:]
-    bc={}; bp=ports((root/'rtl/http2_keyed_receive_credit_store.v').read_text(),'http2_keyed_receive_credit_store')
+    bc={}; bp=ports((source_path(root, 'rtl/http2_keyed_receive_credit_store.v')).read_text(),'http2_keyed_receive_credit_store')
     for d,w,n in bp:
         if n in ('clk','rst') or n.startswith('context_write_'): bc[n]=n
         elif n.startswith('m_axis_tx_'): bc[n]='rx_'+n;wire(w,bc[n])
@@ -227,7 +229,7 @@ assign receive_replay_stream=j_m_stream;assign receive_replay_user=j_m_user;''')
         else: raise AssertionError(n)
     extra_lines.append(named_instance('http2_keyed_receive_credit_store','.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)','receive_credits',bc))
     extra_lines.append(named_instance('http2_receive_flow_controller','.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)','receive_flow',cc))
-    ap=ports((root/'rtl/axis_frame_arbiter.v').read_text(),'axis_frame_arbiter'); ac={}
+    ap=ports((source_path(root, 'rtl/axis_frame_arbiter.v')).read_text(),'axis_frame_arbiter'); ac={}
     for d,w,n in ap:
         if n in('clk','rst'): ac[n]=n
         elif n.startswith('a_axis_'): ac[n]='ordinary_m_axis_tx_'+n[7:]

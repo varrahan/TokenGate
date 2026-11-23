@@ -8,13 +8,15 @@ import re
 import shutil
 import subprocess
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name',required=True);args=parser.parse_args()
     assert args.name.replace('_','').isalnum()
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     folder=root/'build/validation'/args.name;folder.mkdir(parents=True,exist_ok=False)
-    sources={name:root/name for name in('rtl/bpe_rank_lookup.v','rtl/programmable_table_ram.v','sim/tb_rank_lookup_pipeline.sv')}
+    sources={name:source_path(root, name) for name in('rtl/bpe_rank_lookup.v','rtl/programmable_table_ram.v','sim/tb_rank_lookup_pipeline.sv')}
     sources['vendor/glbl.v']=Path('C:/AMDDesignTools/2025.2/Vivado/data/verilog/src/glbl.v')
     inputs={}
     for name,source in sources.items():

@@ -3,11 +3,13 @@ import argparse
 from pathlib import Path
 import re
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
     root=Path(__file__).resolve().parents[1]
-    header=re.search(r'module\s+rpc_generated_response\s*#\(.*?\)\s*\((.*?)\);',(root/'rtl/rpc_generated_response.v').read_text(),re.S)[1]
+    header=re.search(r'module\s+rpc_generated_response\s*#\(.*?\)\s*\((.*?)\);',(source_path(root, 'rtl/rpc_generated_response.v')).read_text(),re.S)[1]
     ports=[];direction=width=None
     for declaration in re.sub(r'//[^\n]*','',header).split(','):
         match=re.fullmatch(r'\s*(?:(input|output)\s+(?:wire|reg)\s*(\[[^\]]+\])?\s*)?(\w+)\s*',declaration)

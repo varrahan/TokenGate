@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -32,7 +34,7 @@ def main():
     bundle_inputs = {}
     if args.bundle:
         assert re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*',args.bundle)
-        source_bundle = root / args.bundle
+        source_bundle = source_path(root, args.bundle)
         assert not source_bundle.exists() and source_bundle.resolve().is_relative_to(root.resolve())
         source_bundle.mkdir()
         for label in ('parser','tokenizer'):

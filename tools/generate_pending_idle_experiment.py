@@ -6,6 +6,8 @@ import shutil
 
 from generate_receive_pool_experiment import replace
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -15,7 +17,7 @@ def main():
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     inputs={}
     for source in previous.glob('*.v'):
-        inputs[source.relative_to(root).as_posix()]=sha(source)
+        inputs[source_relative(source, root).as_posix()]=sha(source)
         shutil.copy2(source,target/source.name)
     source=previous/'http2_enveloped_frame_grants.v'
     old='assign idle=owned_idle&&state==IDLE&&!frame_active&&!start_valid&&!frozen&&!wire_pending&&!tracking_error;'

@@ -14,6 +14,8 @@ from verify_two_fpga_application import closure,resources,timing
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import add_ports,rename
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--snapshot',default='compact_constant_packet_experiment')
@@ -47,7 +49,7 @@ def main():
     assert sha(replay/'build/grpc-header-fixtures/cases.json')==inputs['build/grpc-header-fixtures/cases.json']
 
     parent=root/'build/implementation/xcsu35p-sbvb625-2-e';baseline=parent/args.baseline_run;experiment=parent/args.native_run
-    log=root/f'build/{args.native_run}-implementation.log'
+    log=source_path(root, f'build/{args.native_run}-implementation.log')
     assert 'REGISTERED_SUBSYSTEM_SYNTHESIS_COMPLETE TOP=rpc_grpc_http2_return'in log.read_text()
     assert re.search(r'0 Critical Warnings and 0 Errors encountered\.',log.read_text())
     # A later route may use this frozen checkpoint. This evidence still covers
@@ -62,7 +64,7 @@ def main():
     differences=[]
     for name,p in dags[0].items():
         q=dags[1][name];relative=p.relative_to(baseline/'sources').as_posix()
-        assert sha(p)==sha(root/relative),'Production changed during the isolated experiment: '+relative
+        assert sha(p)==sha(source_path(root, relative)),'Production changed during the isolated experiment: '+relative
         if sha(p)!=sha(q):differences.append(name)
     assert differences==['grpc_response_headers']
     assert sha(experiment/'sources/rtl/grpc_response_headers.v')==inputs['rtl/grpc_response_headers.v']
@@ -82,7 +84,7 @@ def main():
     files[Path('experiment/isolated-override.txt')]=experiment/'sources/isolated-override.txt'
     files[Path('verification')/generator.name]=generator
     native=dict(phase='not_yet_verified',timing_met=False)
-    route_log=root/f'build/{args.native_run}-route-resume.log'
+    route_log=source_path(root, f'build/{args.native_run}-route-resume.log')
     if route_log.is_file()and'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE'in route_log.read_text():
         clocks=timing(experiment/'routed_timing.rpt');routed_area=resources(experiment/'routed_utilization.rpt')
         assert re.search(r'# of nets with routing errors\.+\s*:\s*0\s*:',(experiment/'route_status.rpt').read_text())

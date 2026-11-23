@@ -22,6 +22,7 @@ def main():
     frozen=folder/'sources';inputs={}
     def freeze(source,name):
         target=frozen/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target);inputs[name]=sha(target);return target
+    freeze(root/'tools/rtl_paths.py','tools/rtl_paths.py')
     for name in generation['outputs_sha256']:freeze(experiment/name,name)
     # The Parser-side serializer is actual RTL in the test fixture. It does not
     # become part of the Tokenizer FPGA synthesis closure.

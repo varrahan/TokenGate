@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 from verify_two_fpga_application import closure
 from generate_two_fpga_application import header_end
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -42,7 +44,7 @@ def main():
             dag=closure(top,source);assert len(dag)==size;hashes.append({n:sha(p) for n,p in dag.items()})
             for p in dag.values():
                 relative=p.relative_to(source)
-                assert inputs[relative.as_posix()]==generation['generated_sha256'].get(p.name,sha(root/relative))
+                assert inputs[relative.as_posix()]==generation['generated_sha256'].get(p.name,sha(source_path(root, relative)))
         assert parser_hashes is None or parser_hashes==hashes[0]
         assert tokenizer_hashes is None or tokenizer_hashes==hashes[1]
         parser_hashes,tokenizer_hashes=hashes
@@ -142,8 +144,8 @@ def main():
         'tools/generate_bidirectional_application.py','sim/cocotb/window_format_witness.py',
         'build/experiments/receive-format/sim/test_raw_shutdown_faults.py','build/experiments/receive-format/drain/test_raw_shutdown_faults.py'}
     for n in paths:
-        assert n not in generation['input_sha256'] or sha(root/n)==generation['input_sha256'][n]
-        destination=replay/n;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,destination)
+        assert n not in generation['input_sha256'] or sha(source_path(root, n))==generation['input_sha256'][n]
+        destination=replay/n;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),destination)
     for generator,manifest_path in (('generate_window_format_experiment.py','generation.json'),
         ('generate_window_format_cases.py','sim/generation.json'),('generate_window_format_drain_case.py','drain/generation.json')):
         assert manifests[manifest_path]['generator_sha256']==sha(root/'tools'/generator)

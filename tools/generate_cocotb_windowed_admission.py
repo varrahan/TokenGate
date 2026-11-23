@@ -4,11 +4,13 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY, named_instance
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    admission=ports((root/'rtl/http2_windowed_rpc_admission.v').read_text(),'http2_windowed_rpc_admission')
-    owned=ports((root/'rtl/http2_owned_keyed_windows.v').read_text(),'http2_owned_keyed_windows')
+    admission=ports((source_path(root, 'rtl/http2_windowed_rpc_admission.v')).read_text(),'http2_windowed_rpc_admission')
+    owned=ports((source_path(root, 'rtl/http2_owned_keyed_windows.v')).read_text(),'http2_owned_keyed_windows')
     lines=['`timescale 1ns/1ps','`default_nettype none','module cocotb_windowed_admission_top;',
         'localparam integer USER_WIDTH=16,MEMORY_ADDR_WIDTH=23;']
     for d,w,n in admission:

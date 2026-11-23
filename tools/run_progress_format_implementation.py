@@ -10,6 +10,8 @@ import subprocess
 import sys
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name',required=True);args=parser.parse_args()
@@ -29,14 +31,14 @@ def main():
     folder.mkdir(parents=True,exist_ok=False);inputs={}
     for module,digest in audit['executed_parser_sha256'].items():
         source=archive/'execution-sources/rtl'/(module+'.v');assert sha(source)==digest,module
-        assert(root/'rtl'/source.name).is_file(),'Generic implementation override must replace an existing filename'
+        assert(source_path(root, Path('rtl') / (source.name))).is_file(),'Generic implementation override must replace an existing filename'
         target=folder/'rtl'/source.name;target.parent.mkdir(exist_ok=True);shutil.copy2(source,target);inputs['rtl/'+source.name]=digest
     dependencies=closure(top,folder)
     assert len(dependencies)==75 and set(dependencies)==set(audit['executed_parser_sha256'])
     assert all(sha(path)==audit['executed_parser_sha256'][module]for module,path in dependencies.items())
     for name in('scripts/implement_registered_subsystem.tcl','scripts/run_registered_subsystem_implementation.ps1',
-                 'tools/generate_parser_timing_harness.py','tools/capture_source_provenance.py','constraints/parser.xdc'):
-        source=root/name;target=folder/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target);inputs[name]=sha(target)
+                 'tools/generate_parser_timing_harness.py','tools/capture_source_provenance.py','constraints/parser.xdc', 'tools/rtl_paths.py', 'scripts/rtl_sources.tcl'):
+        source=source_path(root, name);target=folder/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target);inputs[name]=sha(target)
     shutil.copy2(audit_path,folder/'functional-corpus-audit.json');shutil.copy2(Path(__file__),folder/Path(__file__).name)
     harness=root/'build'/(args.name+'-timing-harness.v')
     subprocess.run([sys.executable,str(folder/'tools/generate_parser_timing_harness.py'),
@@ -53,7 +55,7 @@ def main():
     def save():launch_path.write_text(json.dumps(report,indent=2)+'\n')
     save()
     try:
-        for name,digest in inputs.items():assert sha(root/name)==digest if not name.startswith('rtl/')else sha(folder/name)==digest
+        for name,digest in inputs.items():assert sha(source_path(root, name))==digest if not name.startswith('rtl/')else sha(folder/name)==digest
         with(root/'build'/(args.name+'-stdout.log')).open('w')as output:
             process=subprocess.Popen(command,cwd=root,stdout=output,stderr=subprocess.STDOUT)
             report['launcher_pid']=process.pid;save();code=process.wait()

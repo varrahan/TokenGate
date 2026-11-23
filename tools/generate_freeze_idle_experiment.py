@@ -7,6 +7,8 @@ import shutil
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -22,7 +24,7 @@ def main():
     for module, digest in parent['executed_parser_sha256'].items():
         source = original / (module + '.v')
         assert sha(source) == digest
-        inputs[source.relative_to(root).as_posix()] = digest
+        inputs[source_relative(source, root).as_posix()] = digest
         shutil.copy2(source, target / source.name)
     path = target / 'rpc_grpc_http2_return.v'
     old = 'assign idle=response_idle&&grant_idle&&arb_idle;'

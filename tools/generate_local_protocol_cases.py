@@ -11,6 +11,8 @@ from h2.settings import SettingCodes
 from hyperframe.frame import Frame
 from generate_receive_pool_experiment import replace
 
+from rtl_paths import source_relative
+
 
 def wire(kind, flags=0, stream=0, payload=b''):
     return len(payload).to_bytes(3, 'big') + bytes([kind, flags]) + stream.to_bytes(4, 'big') + payload
@@ -85,7 +87,7 @@ def main():
                 '6.1' if name.startswith('data') else '6.2' if name.startswith('headers') else
                 '6.10' if name.startswith('continuation') else '6.5'), test_sha256=sha(destination))
     result = dict(phase='native_connection_error_cases_generated', generator_sha256=sha(Path(__file__)),
-        input_sha256={source.relative_to(root).as_posix():sha(source),
+        input_sha256={source_relative(source, root).as_posix():sha(source),
             'sim/cocotb/local_error_protocol_witness.py':sha(root/'sim/cocotb/local_error_protocol_witness.py')},
         cases=results, native_h2_version=h2.__version__, known_native_reference_error_code_deviations=['settings_ack_nonempty'],
         actual_rtl_protocol_matrix_verified=False, full_system_complete=False)

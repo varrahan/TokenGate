@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_two_fpga_application import add_ports, rename
 from generate_lifecycle_send_windows import replace_once
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    source=root/'rtl/http2_rpc_admission.v';text=source.read_text()
+    source=source_path(root, 'rtl/http2_rpc_admission.v');text=source.read_text()
     extra=[('input','[MEMORY_ADDR_WIDTH-1:0]','cfg_window_base'),('input','[MEMORY_ADDR_WIDTH:0]','cfg_window_bytes'),
         ('output','[MEMORY_ADDR_WIDTH-1:0]','control_pool_base'),('output','[MEMORY_ADDR_WIDTH:0]','control_pool_bytes'),
         ('output','','init_valid'),('input','','init_ready'),('output','[USER_WIDTH-1:0]','init_user'),
@@ -63,10 +65,10 @@ def main():
         '// New-stream results publish only after actual send-window initialization ACK.\n'
         '// Existing trailers preserve their window. Failed initialization closes the tentative RPC.\n'
         '// The parent still owns connection-window bootstrap, packet commit, flow-control replay and image leases.')
-    target=root/'rtl/http2_windowed_rpc_admission.v';target.write_text(text)
+    target=source_path(root, 'rtl/http2_windowed_rpc_admission.v');target.write_text(text)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/windowed-rpc-admission-generation.json').write_text(json.dumps(dict(
-        phase='generated_window_commit_fenced_admission',input_sha256={p.relative_to(root).as_posix():sha(p)
+        phase='generated_window_commit_fenced_admission',input_sha256={source_relative(p, root).as_posix():sha(p)
         for p in(source,Path(__file__))},generated_sha256=sha(target),
         requires_shared_actual_window_service=True,connection_bootstrap_integrated=False,
         complete_forward_application_joined=False,full_system_complete=False),indent=2)+'\n')

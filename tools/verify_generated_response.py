@@ -8,6 +8,8 @@ import re
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -29,13 +31,13 @@ def main():
     assert not tree.findall('.//failure') and not tree.findall('.//error')
     rtl_count = 0
     for name, digest in report['source_sha256'].items():
-        assert sha(root / name) == digest, ('Current source differs', name)
+        assert sha(source_path(root, name)) == digest, ('Current source differs', name)
         if name.startswith('rtl/'):
             assert sha(native / 'sources' / name) == digest, ('Native source differs', name)
             rtl_count += 1
     assert rtl_count == 14
     for name, digest in report['fixture_sha256'].items():
-        assert sha(root / name) == digest, ('Current fixture differs', name)
+        assert sha(source_path(root, name)) == digest, ('Current fixture differs', name)
     fixture_root = root / 'build/generated-response-fixtures'
     fixture = json.loads((fixture_root / 'fixture_manifest.json').read_text())
     assert fixture['generator_sha256'] == sha(root / 'tools/generate_token_response_vectors.py')
@@ -51,7 +53,7 @@ def main():
     assert acceptance['tx_stall_cycles'] and acceptance['bow_stall_cycles'] and acceptance['result_stall_cycles']
     assert not acceptance['full_transport_verified'] and not acceptance['whole_rpc_lease_verified']
     assert not acceptance['physical_throughput_verified']
-    log = (root / f'build/{args.native_run}-implementation.log').read_text()
+    log = (source_path(root, f'build/{args.native_run}-implementation.log')).read_text()
     assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE' in log
     assert '0 Critical Warnings and 0 Errors encountered.' in log
     assert 'Found timing loop' not in log and 'ERROR: [Synth' not in log
@@ -69,7 +71,7 @@ def main():
     # A rerun or a revised auditor gets a separate, immutable evidence folder.
     key = hashlib.sha256((sha(reports / 'report.json') + sha(native / 'source-provenance.json') + sha(Path(__file__))).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/generated-response-evidence' / key
-    files = {Path(name): root / name for name in {**report['source_sha256'], **report['fixture_sha256']}}
+    files = {Path(name): source_path(root, name) for name in {**report['source_sha256'], **report['fixture_sha256']}}
     files.update({Path('reports') / name: reports / name for name in ('report.json', 'acceptance.json', 'results.xml', 'simulation.log', 'build.log')})
     files.update({Path('native') / name: native / name for name in ('source-provenance.json', 'routed_timing.rpt', 'routed_utilization.rpt', 'route_status.rpt', 'routed_drc.rpt')})
     files[Path('verification/verify_generated_response.py')] = Path(__file__)

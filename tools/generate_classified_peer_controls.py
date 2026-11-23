@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY,named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    source=root/'rtl/http2_peer_controls.v';classifier=root/'rtl/http2_missing_stream_classifier.v'
+    source=source_path(root, 'rtl/http2_peer_controls.v');classifier=source_path(root, 'rtl/http2_missing_stream_classifier.v')
     cp=ports(source.read_text(),'http2_peer_controls');hp=ports(classifier.read_text(),'http2_missing_stream_classifier')
     public=[(d,f'[3*{MEMORY[n][0]}-1:0]'if n in MEMORY else w,n)for d,w,n in cp if not n.startswith('classify_')]
     public += [('input','','history_fence'),('output','[7:0]','history_status'),('output','[7:0]','history_detail'),
@@ -49,8 +51,8 @@ def main():
     lines +=[named_instance('http2_peer_controls','.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)','controls',cc),
         named_instance('http2_missing_stream_classifier','.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)','classifier',hc),
         'endmodule','`default_nettype wire','']
-    target=root/'rtl/http2_classified_peer_controls.v';target.write_text('\n'.join(lines));sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    result=dict(phase='generated_actual_classification_controls',input_sha256={str(p.relative_to(root)).replace('\\','/'):sha(p)for p in(source,classifier,Path(__file__))},
+    target=source_path(root, 'rtl/http2_classified_peer_controls.v');target.write_text('\n'.join(lines));sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+    result=dict(phase='generated_actual_classification_controls',input_sha256={str(source_relative(p, root)).replace('\\','/'):sha(p)for p in(source,classifier,Path(__file__))},
         production_sha256=sha(target),actual_parent_history_fence_required=True,shadow_directory=False,full_raw_parser_joined=False,full_system_complete=False)
     (root/'build/validation/classified-peer-controls-generation.json').write_text(json.dumps(result,indent=2)+'\n')
     print('Generated actual missing-key classifier around peer/journal controls')

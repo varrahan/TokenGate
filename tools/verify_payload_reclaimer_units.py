@@ -6,6 +6,8 @@ from pathlib import Path
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -85,7 +87,7 @@ def main():
         actual_receive_backend_integrated=False, caller_empty_queue_proof_integrated=False,
         native_vendor_memory=False, application_credit_fixed=False,
         whole_system_retained_reset_verified=False, full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix(): sha(p) for p in folder.iterdir() if p.is_file()},
+        artifacts_sha256={source_relative(p, root).as_posix(): sha(p) for p in folder.iterdir() if p.is_file()},
         verifier_sha256=sha(Path(__file__)))
     result['key'] = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
     destination = root / 'build/validation/payload-reclaimer-units-evidence' / result['key']

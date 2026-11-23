@@ -3,10 +3,12 @@ import hashlib
 import json
 from pathlib import Path
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    source=root/'rtl/cdc_packet_fifo.v';text=source.read_text()
+    source=source_path(root, 'rtl/cdc_packet_fifo.v');text=source.read_text()
     assert sha(source)=='ad474cf5bf282d2819eb014370ba211f8e5fb698af245eea17b826386b3c1098'
     assert text.count('.SRC_INPUT_REG(0)')==2
     text=text.replace('.SRC_INPUT_REG(0)','.SRC_INPUT_REG(1)')

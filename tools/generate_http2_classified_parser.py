@@ -7,13 +7,15 @@ from generate_bidirectional_application import ports
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import MEMORY,add_ports,header_end,instance,named_instance,rename
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];inputs={};outputs={}
     def read(n):
-        p=root/'rtl'/(n+'.v');inputs[p.relative_to(root).as_posix()]=hashlib.sha256(p.read_bytes()).hexdigest();return p.read_text()
+        p=source_path(root, Path('rtl') / (n+'.v'));inputs[source_relative(p, root).as_posix()]=hashlib.sha256(p.read_bytes()).hexdigest();return p.read_text()
     def emit(n,t):
-        p=root/'rtl'/(n+'.v');p.write_text(t);outputs[p.relative_to(root).as_posix()]=hashlib.sha256(p.read_bytes()).hexdigest()
+        p=source_path(root, Path('rtl') / (n+'.v'));p.write_text(t);outputs[source_relative(p, root).as_posix()]=hashlib.sha256(p.read_bytes()).hexdigest()
     life=[('output','','ctl_history_fence'),('input','[31:0]','ctl_result_http2_error')]
     transport=add_ports(read('http2_peer_parser_transport'),'http2_peer_parser_transport',life)
     transport=rename(transport,'http2_peer_parser_transport','http2_classified_parser_transport')

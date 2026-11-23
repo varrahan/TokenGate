@@ -8,6 +8,8 @@ import re
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];parser=argparse.ArgumentParser()
@@ -26,13 +28,13 @@ def main():
     assert not tree.findall('.//failure')and not tree.findall('.//error')
     rtl_count=0
     for name,digest in report['source_sha256'].items():
-        assert sha(root/name)==digest,('Current source differs',name)
+        assert sha(source_path(root, name))==digest,('Current source differs',name)
         if name.startswith('rtl/'):
             assert sha(native/'sources'/name)==digest,('Combined native RTL differs',name)
             rtl_count+=1
     assert rtl_count>=60
     for name,digest in report['fixture_sha256'].items():
-        assert sha(root/name)==digest,('Current fixture differs',name)
+        assert sha(source_path(root, name))==digest,('Current fixture differs',name)
         if Path(name).name!='response_reference.json':assert oracle['fixture_sha256'][Path(name).name]==digest
     assert len(report['fixture_sha256'])==7
     assert oracle['verifier_sha256']==sha(root/'tools/verify_http2_prefill_references.py')
@@ -54,7 +56,7 @@ def main():
     assert acceptance['response_stall_cycles']and acceptance['response_held_result_cycles']and acceptance['dma_stall_cycles']
     assert not acceptance['complete_http2_transport_verified']and not acceptance['response_transport_framing_verified']
     assert not acceptance['whole_rpc_gpu_image_lease_verified']and not acceptance['full_system_complete']
-    log_file=root/f'build/{args.native_run}-implementation.log';log=log_file.read_text()
+    log_file=source_path(root, f'build/{args.native_run}-implementation.log');log=log_file.read_text()
     assert 'REGISTERED_SUBSYSTEM_SYNTHESIS_COMPLETE TOP=http2_bidirectional_application PART=xcsu35p-sbvb625-2-e'in log
     assert '0 Critical Warnings and 0 Errors encountered.'in log
     assert 'Found timing loop'not in log and 'ERROR: [Synth'not in log
@@ -78,11 +80,11 @@ def main():
         folder=native.parent/item['native_run']
         for name in ('synthesized.dcp','source-provenance.json'):
             path=folder/name
-            path_check_inputs[path.relative_to(root).as_posix()]=sha(path)
+            path_check_inputs[source_relative(path, root).as_posix()]=sha(path)
     lut_fit=resources['luts']<=16320
     key=hashlib.sha256((sha(reports/'report.json')+sha(oracle_file)+sha(native/'source-provenance.json')+sha(Path(__file__))).encode()).hexdigest()[:16]
     evidence=root/'build/validation/bidirectional-application-evidence'/key
-    files={Path(name):root/name for name in{**report['source_sha256'],**report['fixture_sha256']}}
+    files={Path(name):source_path(root, name) for name in{**report['source_sha256'],**report['fixture_sha256']}}
     files.update({Path('reports')/name:reports/name for name in('report.json','acceptance.json','results.xml','simulation.log','build.log')})
     files.update({Path('native')/name:native/name for name in('source-provenance.json','synthesis_utilization.rpt','synthesis_timing.rpt')})
     files[Path('native/synthesis.log')]=log_file;files[Path('native-reference.json')]=oracle_file

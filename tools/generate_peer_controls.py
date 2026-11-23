@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY,named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    read=lambda n:(root/'rtl'/(n+'.v')).read_text()
+    read=lambda n:(source_path(root, Path('rtl') / (n+'.v'))).read_text()
     cp=ports(read('http2_journaled_controls'),'http2_journaled_controls')
     pp=ports(read('http2_peer_state'),'http2_peer_state')
     public=[]
@@ -114,7 +116,7 @@ def main():
     for _,_,n in arb:
         ac[n]='j_m_axis_tx_'+n[7:]if n.startswith('a_axis_')else'p_m_axis_tx_'+n[7:]if n.startswith('b_axis_')else'm_axis_tx_'+n[7:]if n.startswith('m_axis_')else'tx_idle'if n=='idle'else n
     lines +=[named_instance('axis_frame_arbiter','.DATA_WIDTH(512),.KEEP_WIDTH(64),.USER_WIDTH(USER_WIDTH)','tx',ac),'endmodule','`default_nettype wire','']
-    target=root/'rtl/http2_peer_controls.v';target.write_text('\n'.join(lines))
+    target=source_path(root, 'rtl/http2_peer_controls.v');target.write_text('\n'.join(lines))
     # Keep the exact actual directory/window fixture and add the real peer state
     # as its fourth memory client. The fixture no longer supplies any notice.
     old=(root/'sim/cocotb_journaled_controls_top.sv').read_text()
@@ -136,7 +138,7 @@ def main():
     harness=root/'sim/cocotb_peer_controls_top.sv';harness.write_text(old)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     result=dict(phase='generated_actual_peer_control_join',production_sha256=sha(target),harness_sha256=sha(harness),
-        input_sha256={str(p.relative_to(root)).replace('\\','/'):sha(p)for p in(root/'rtl/http2_journaled_controls.v',root/'rtl/http2_peer_state.v',root/'rtl/axis_frame_arbiter.v',root/'sim/cocotb_journaled_controls_top.sv',Path(__file__))},
+        input_sha256={str(source_relative(p, root)).replace('\\','/'):sha(p)for p in(source_path(root, 'rtl/http2_journaled_controls.v'),source_path(root, 'rtl/http2_peer_state.v'),source_path(root, 'rtl/axis_frame_arbiter.v'),root/'sim/cocotb_journaled_controls_top.sv',Path(__file__))},
         actual_shared_directory=True,notice_callbacks_supplied_by_rtl=True,full_raw_parser_joined=False,full_system_complete=False)
     (root/'build/validation/peer-controls-generation.json').write_text(json.dumps(result,indent=2)+'\n')
     print('Generated journal controls with real durable peer notices and native local SETTINGS/PING TX')

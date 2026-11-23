@@ -10,6 +10,8 @@ from generate_hyperram_cdc_timing_harness import ports
 from run_frame_fifo_equivalence_wsl import observe
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -133,7 +135,7 @@ write_json equivalence-netlist.json
         two_state_formal=True, prior_inconclusive_runs_preserved=prior_runs,
         fresh_full_application_corpus_verified=False, full_protocol_matrix_verified=False,
         native_timing_verified=False, native_vendor_runtime_verified=False, full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix(): sha(p) for p in archive.iterdir() if p.is_file()}, verifier_sha256=sha(Path(__file__)))
+        artifacts_sha256={source_relative(p, root).as_posix(): sha(p) for p in archive.iterdir() if p.is_file()}, verifier_sha256=sha(Path(__file__)))
     result['key'] = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/rpc-completion-flags-evidence' / result['key']
     evidence.mkdir(parents=True, exist_ok=False)

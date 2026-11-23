@@ -10,6 +10,8 @@ import sys
 from generate_two_fpga_application import header_end
 from verify_frozen_raw_execution import verify_execution
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -77,8 +79,8 @@ def main():
         'build/experiments/retained-native-roundtrip/test_raw_grpc_enveloped.py',
         'build/experiments/window-format/sim/test_raw_shutdown_faults.py'}
     for n in paths:
-        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,p)
-        assert n not in generation['input_sha256'] or sha(root/n)==generation['input_sha256'][n]
+        p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),p)
+        assert n not in generation['input_sha256'] or sha(source_path(root, n))==generation['input_sha256'][n]
     for generator,manifest,expected in (('generate_progress_ledger_witness.py','ledger-witness-generation.json',ledger),
         ('generate_progress_format_experiment.py','generation.json',generation),
         ('generate_progress_format_fault_case.py','faults/generation.json',faults)):

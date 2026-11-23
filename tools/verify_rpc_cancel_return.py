@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 from hyperframe.frame import DataFrame, Frame
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser()
@@ -40,12 +42,12 @@ def main():
         assert len(parser_dag)==18 and 'detokenizer_engine'not in parser_dag
         assert 'detokenizer_engine'in inverse_dag and 'proto_json_serializer'not in inverse_dag
         for p in[*parser_dag.values(),*inverse_dag.values()]:
-            n=p.relative_to(source).as_posix();assert sha(root/n)==inputs[n],'Current active RTL differs: '+n
+            n=p.relative_to(source).as_posix();assert sha(source_path(root, n))==inputs[n],'Current active RTL differs: '+n
         harness=(source/'sim/cocotb_rpc_cancel_top.sv').read_text()
         assert 'external_memory_fabric #(.CLIENTS(5))'in harness and 'inverse_tokenizer_partition #'in harness
         assert 'grpc_stream_store registry('not in harness
         records[label]=dict(acceptance=accepted,execution_inputs=len(inputs),parser_modules=list(parser_dag),inverse_modules=list(inverse_dag),
-            current_active_rtl_matches=True,current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h])
+            current_active_rtl_matches=True,current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h])
         for n in inputs:files[Path(label)/'execution'/n]=source/n
         for n in('report.json','snapshot.json','inputs.json','acceptance.json','results.xml','simulation.log','build.log'):
             files[Path(label)/'reports'/n]=archive/n
@@ -139,12 +141,12 @@ def main():
     native=dict(phase='not_verified',run=args.native_run)
     if not args.functional_only:
         folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/args.native_run;frozen=folder/'sources'
-        provenance=json.loads((folder/'source-provenance.json').read_text());log=root/f'build/{args.native_run}-implementation.log'
+        provenance=json.loads((folder/'source-provenance.json').read_text());log=source_path(root, f'build/{args.native_run}-implementation.log')
         assert f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={top} PART=xcsu35p-sbvb625-2-e'in log.read_text()
         for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
         dag=closure(top,frozen);assert len(dag)==18
         for p in dag.values():
-            n=p.relative_to(frozen).as_posix();assert sha(p)==inputs[n]==sha(root/n);files[Path('native/sources')/n]=p
+            n=p.relative_to(frozen).as_posix();assert sha(p)==inputs[n]==sha(source_path(root, n));files[Path('native/sources')/n]=p
         script=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
         assert[s.strip()for s in script.splitlines()if s.strip().startswith('set_false_path')]==[
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']

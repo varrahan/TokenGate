@@ -6,11 +6,13 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    owned_path = root / 'rtl/http2_owned_lifecycle_windows.v'
-    framer_path = root / 'rtl/grpc_http2_response_framer.v'
+    owned_path = source_path(root, 'rtl/http2_owned_lifecycle_windows.v')
+    framer_path = source_path(root, 'rtl/grpc_http2_response_framer.v')
     owned = ports(owned_path.read_text(), 'http2_owned_lifecycle_windows')
     framer = ports(framer_path.read_text(), 'grpc_http2_response_framer')
     hidden = {'frame_req_valid', 'frame_req_ready', 'frame_req_user', 'frame_req_stream',
@@ -96,11 +98,11 @@ def main():
         '            end',
         '            RESERVE:if(owned_result_valid&&owned_result_ready)begin state<=IDLE;parked<=owned_window_rsp_status==1;end',
         '            default:state<=IDLE;', '        endcase', '    end', 'end', 'endmodule', '`default_nettype wire', '']
-    target = root / 'rtl/grpc_durable_window_framer.v'
+    target = source_path(root, 'rtl/grpc_durable_window_framer.v')
     target.write_text('\n'.join(lines))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     (root / 'build/validation/durable-window-framer-generation.json').write_text(json.dumps(dict(
-        phase='generated_actual_durable_framer', input_sha256={p.relative_to(root).as_posix(): sha(p)
+        phase='generated_actual_durable_framer', input_sha256={source_relative(p, root).as_posix(): sha(p)
         for p in (owned_path, framer_path, Path(__file__))}, generated_sha256=sha(target),
         actual_cached_binding=True, external_credit_grants=False, raw_control_integrated=False,
         full_system_complete=False), indent=2) + '\n')

@@ -6,6 +6,8 @@ from pathlib import Path
 from generate_two_fpga_application import add_ports,rename
 from generate_lifecycle_send_windows import replace_once
 
+from rtl_paths import source_path, source_relative
+
 
 TRANSPORT_PORTS=[('input','','transport_req_valid'),('output','','transport_req_ready'),
     ('input','[2:0]','transport_req_op'),('input','','transport_private_abort_proof'),
@@ -18,7 +20,7 @@ TRANSPORT_PORTS=[('input','','transport_req_valid'),('output','','transport_req_
 
 
 def main():
-    root=Path(__file__).resolve().parents[1];source=root/'rtl/rpc_cancel_response_partition.v'
+    root=Path(__file__).resolve().parents[1];source=source_path(root, 'rtl/rpc_cancel_response_partition.v')
     text=rename(source.read_text(),'rpc_cancel_response_partition','rpc_http2_response_partition')
     # add_ports emits wire by default; the two response status registers are
     # declared separately so their driven public values remain stable under stalls.
@@ -114,11 +116,11 @@ def main():
             T_COMMIT:if(slot_ready)state<=T_CWAIT;
             T_CWAIT:if(slot_valid)begin if(slot_status!=0)transport_failure(3,slot_status,1);else state<=T_RESULT;end
             T_RESULT:if(transport_rsp_ready)state<=RESULT;''')
-    target=root/'rtl/rpc_http2_response_partition.v';target.write_text(text)
+    target=source_path(root, 'rtl/rpc_http2_response_partition.v');target.write_text(text)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/rpc-http2-progress-generation.json').write_text(json.dumps(dict(
-        phase='generated_actual_rpc_transport_progress',input_sha256={source.relative_to(root).as_posix():sha(source),
-            Path(__file__).relative_to(root).as_posix():sha(Path(__file__))},generated_sha256=sha(target),
+        phase='generated_actual_rpc_transport_progress',input_sha256={source_relative(source, root).as_posix():sha(source),
+            source_relative(Path(__file__), root).as_posix():sha(Path(__file__))},generated_sha256=sha(target),
         actual_shared_progress_memory_owner=True,raw_rpc_header_coordinator_joined=False,full_system_complete=False),indent=2)+'\n')
     print('Generated actual RPC header/trailer progress owner')
 

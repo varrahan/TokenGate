@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -26,7 +28,7 @@ def main():
     parent = read(parent_path)
     assert parent['key'] == generation['parent_corpus_audit_key'] == '6dd529d376e06926'
     for name, digest in generation['inputs_sha256'].items():
-        assert sha(root / name) == digest
+        assert sha(source_path(root, name)) == digest
     for name, digest in generation['outputs_sha256'].items():
         assert sha(folder / name) == digest
     old = root / 'build/wsl-reports/raw_envelope_progress_format_full_native_corpus/execution-sources/rtl/rpc_grpc_http2_return.v'
@@ -39,10 +41,10 @@ def main():
     with tempfile.TemporaryDirectory(prefix='fi-', dir=root / 'build') as temporary:
         replay = Path(temporary)
         assert replay.resolve().is_relative_to((root / 'build').resolve())
-        for relative in list(generation['inputs_sha256']) + [str(path.relative_to(root)) for path in [generator, parent_path, *helpers]]:
+        for relative in list(generation['inputs_sha256']) + [str(source_relative(path, root)) for path in [generator, parent_path, *helpers]]:
             target = replay / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(root / relative, target)
+            shutil.copy2(source_path(root, relative), target)
         result = subprocess.run([sys.executable, str(replay / 'tools/generate_freeze_idle_experiment.py')],
                                 capture_output=True, text=True)
         assert result.returncode == 0, (result.stdout, result.stderr)
@@ -106,7 +108,7 @@ def main():
         generator_replay_verified=True, generation_sha256=sha(generation_path),
         full_native_corpus_on_candidate_verified=False, current_native_implementation_verified=False,
         native_timing_improvement_verified=False, full_system_complete=False,
-        artifacts_sha256={path.relative_to(root).as_posix(): sha(path) for path in
+        artifacts_sha256={source_relative(path, root).as_posix(): sha(path) for path in
                          [Path(__file__), generator, generation_path, *helpers]})
     result['key'] = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/freeze-idle-evidence' / result['key']
@@ -114,7 +116,7 @@ def main():
     for relative in result['artifacts_sha256']:
         target = evidence / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / relative, target)
+        shutil.copy2(source_path(root, relative), target)
     output = root / 'build/validation/freeze-idle-experiment.json'
     output.write_text(json.dumps(result, indent=2) + '\n')
     shutil.copy2(output, evidence / 'verified.json')

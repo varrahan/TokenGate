@@ -13,6 +13,8 @@ from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--run',required=True);args=parser.parse_args()
@@ -198,7 +200,7 @@ def main():
         exact_tested_source_digests_verified=True,harness_replay_verified=True,
         package_timing_verified=False,pin_level_phy_verified=False,physical_link_verified=False,pcie_verified=False,
         whole_system_reset_fault_matrix_verified=False,full_protocol_matrix_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in sorted(artifacts)})
     if role=='rpc-refusal-v7-parser':
         result.update(directed_functional_audit_key=functional['key'],ack_fault_audit_key=faults['key'],
             default_open_equivalence_audit_key=formal['key'],full_new_source_32_call_runtime_verified=False,

@@ -8,13 +8,15 @@ import re
 import shutil
 import subprocess
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name',required=True);parser.add_argument('--only-scanner',action='store_true');args=parser.parse_args()
     assert re.fullmatch(r'[A-Za-z0-9_]+',args.name)
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     folder=root/'build/validation'/args.name;folder.mkdir(parents=True,exist_ok=False)
-    sources={name:root/name for name in('rtl/axis_compacting_window.v','rtl/json_simd_scanner.v',
+    sources={name:source_path(root, name) for name in('rtl/axis_compacting_window.v','rtl/json_simd_scanner.v',
         'sim/tb_compacting_window.sv','sim/tb_json_simd_scanner.sv')}
     sources['vendor/glbl.v']=Path('C:/AMDDesignTools/2025.2/Vivado/data/verilog/src/glbl.v');inputs={}
     for name,source in sources.items():

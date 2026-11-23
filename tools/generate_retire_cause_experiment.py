@@ -6,6 +6,8 @@ import shutil
 
 from generate_receive_pool_experiment import replace
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -13,7 +15,7 @@ def main():
     folder=root/'build/experiments/retire-cause';target=folder/'rtl';target.mkdir(parents=True,exist_ok=True)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();inputs={}
     for p in source.glob('*.v'):
-        inputs[p.relative_to(root).as_posix()]=sha(p);shutil.copy2(p,target/p.name)
+        inputs[source_relative(p, root).as_posix()]=sha(p);shutil.copy2(p,target/p.name)
     path=source/'http2_classified_parser_transport.v'
     text=replace(path.read_text(),'''                        packet_control_error<=p_post_abort_status;packet_control_cause<=p_post_abort_detail;
                         packet_control_memory<=p_post_abort_memory_status;raw_status<=11;

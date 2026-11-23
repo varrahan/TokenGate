@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from generate_hyperram_cdc_timing_harness import ports
 
+from rtl_paths import source_path, source_relative
+
 
 def module_header(name,public,parameters=True):
     result=['`timescale 1ns/1ps','`default_nettype none',
@@ -17,7 +19,7 @@ def module_header(name,public,parameters=True):
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     names=('axi_hyperram_bridge','hyperram_clock_bridge','hyperram_startup','hyperram_transaction_engine')
-    paths={n:root/'rtl'/(n+'.v')for n in names}
+    paths={n:source_path(root, Path('rtl') / (n+'.v'))for n in names}
     fp,cp,sp,ep=(ports(paths[n].read_text(),n)for n in names)
     status=('fabric_reset','phy_reset_n','memory_ready','startup_fault','startup_detail','startup_phase',
         'contents_lost','device_id0','device_id1','config_readback')
@@ -51,7 +53,7 @@ def main():
     remap={'rst':'engine_reset','enable':'engine_enable','cfg_latency':'engine_latency','cfg_fixed_latency':'engine_fixed_latency','idle':'engine_idle'}
     lines +=['hyperram_transaction_engine #(.MEMORY_CLOCK_HZ(MEMORY_CLOCK_HZ)) engine(',
         ',\n'.join(f'    .{n}({remap.get(n,n)})'for _,_,n in ep),');','endmodule','`default_nettype wire','']
-    backend=root/'rtl/hyperram_word_backend.v';backend.write_text('\n'.join(lines))
+    backend=source_path(root, 'rtl/hyperram_word_backend.v');backend.write_text('\n'.join(lines))
     public=[('input','','app_clk'),('input','','mem_clk'),('input','','rst'),
         ('input','','power_good_mem'),('input','','phy_ready_mem'),
         ('output','','app_reset'),('output','','mem_reset')]
@@ -139,10 +141,10 @@ def main():
         '    else if(hb_rsp_valid&&hb_rsp_ready)last_memory_detail<=returned_detail_app;',
         'end','assign memory_detail_app=last_memory_detail;',
         'endmodule','`default_nettype wire','']
-    target=root/'rtl/axi_hyperram_async_controller.v';target.write_text('\n'.join(lines))
+    target=source_path(root, 'rtl/axi_hyperram_async_controller.v');target.write_text('\n'.join(lines))
     result=dict(generator_sha256=sha(Path(__file__)),port_parser_sha256=sha(root/'tools/generate_hyperram_cdc_timing_harness.py'),
-        inputs_sha256={p.relative_to(root).as_posix():sha(p)for p in list(paths.values())+[root/'rtl/cdc_packet_fifo.v']},
-        outputs_sha256={p.relative_to(root).as_posix():sha(p)for p in(backend,target)},
+        inputs_sha256={source_relative(p, root).as_posix():sha(p)for p in list(paths.values())+[source_path(root, 'rtl/cdc_packet_fifo.v')]},
+        outputs_sha256={source_relative(p, root).as_posix():sha(p)for p in(backend,target)},
         frontend_and_clock_bridge_and_actual_word_backend_connected=True,
         complete_assembly_functionally_verified=False,native_timing_verified=False,pin_level_phy_present=False,
         tokenizer_instantiation_verified=False,full_system_complete=False)

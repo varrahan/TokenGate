@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -76,7 +78,7 @@ def main():
     (folder/'proof.ys').write_text(script)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     manifest=dict(generator_sha256=sha(Path(__file__)),actual_leaf_sha256=sha(source),
-        dependency_sha256={n:sha(root/n) for n in dependencies},
+        dependency_sha256={n:sha(source_path(root, n)) for n in dependencies},
         formal_sha256={n:sha(folder/n) for n in ('ingress.v','proof.ys')},
         feature_enabled=True,port_widths=dict(user=16,memory_address=23),
         arbitrary_inputs=True,initial_registers_zero=True,proof_completed=False)

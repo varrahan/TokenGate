@@ -5,10 +5,12 @@ from pathlib import Path
 
 from generate_two_fpga_application import add_ports, rename
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    original=root/'rtl/grpc_leased_stream_store.v';source=original.read_text()
+    original=source_path(root, 'rtl/grpc_leased_stream_store.v');source=original.read_text()
     public=[('input','','pool_lock_valid'),('output','','pool_lock_ready'),
         ('input','[MEMORY_ADDR_WIDTH-1:0]','pool_lock_base'),('input','[MEMORY_ADDR_WIDTH:0]','pool_lock_bytes'),
         ('output','','pool_lock_result_valid'),('input','','pool_lock_result_ready'),
@@ -66,10 +68,10 @@ end
 '''
     # Put declarations before the original arbitration expressions.
     source=source.replace('wire control_candidate=req_valid&&!rsp_valid;',declaration+'\nwire control_candidate=req_valid&&!rsp_valid;')
-    target=root/'rtl/grpc_pool_locked_stream_store.v';target.write_text(source)
+    target=source_path(root, 'rtl/grpc_pool_locked_stream_store.v');target.write_text(source)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/pool-locked-store-generation.json').write_text(json.dumps(dict(
-        phase='generated_pool_exclusion',inputs_sha256={p.relative_to(root).as_posix():sha(p)for p in(original,Path(__file__))},
+        phase='generated_pool_exclusion',inputs_sha256={source_relative(p, root).as_posix():sha(p)for p in(original,Path(__file__))},
         generated_sha256=sha(target),single_actual_directory=True,whole_rpc_image_leases_verified=False,
         full_system_complete=False),indent=2)+'\n')
     print('Generated one actual directory with cached return authority and explicit backend-quiescent pool ownership')

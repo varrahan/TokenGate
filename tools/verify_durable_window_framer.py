@@ -13,6 +13,8 @@ import xml.etree.ElementTree as ET
 from generate_two_fpga_application import balanced
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -100,7 +102,7 @@ def main():
         verified_utc=datetime.now(timezone.utc).isoformat(), acceptance=accepted,
         active_rtl_modules=list(dependencies), execution_inputs=len(inputs), native_reference_reproduced=True,
         single_actual_directory_verified=True, actual_cached_binding_and_pool_authority_verified=True,
-        current_primary_differences=[n for n, h in inputs.items() if not (root / n).is_file() or sha(root / n) != h],
+        current_primary_differences=[n for n, h in inputs.items() if not (source_path(root, n)).is_file() or sha(source_path(root, n)) != h],
         raw_control_integrated=False, response_headers_trailers_verified=False,
         whole_rpc_image_leases_verified=False, independent_clocks_verified=False,
         physical_interfaces_verified=False, full_system_complete=False, verifier_sha256=sha(Path(__file__)))
@@ -119,7 +121,7 @@ def main():
         assert [line.strip() for line in script.splitlines() if line.strip().startswith('set_false_path')] == [
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]',
             'set_false_path -to [all_outputs]']
-        log = root / f'build/{args.native_run}-implementation.log'
+        log = source_path(root, f'build/{args.native_run}-implementation.log')
         assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=grpc_durable_window_framer PART=xcsu35p-sbvb625-2-e' in log.read_text()
         assert '0 Critical Warnings and 0 Errors encountered.' in log.read_text() and 'ERROR: [Synth' not in log.read_text()
         area = resources(native / 'routed_utilization.rpt'); clocks = timing(native / 'routed_timing.rpt')

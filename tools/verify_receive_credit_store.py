@@ -12,6 +12,8 @@ from zipfile import ZipFile
 
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument('--snapshot', default='receive_credit_actual_retired_binding')
@@ -30,9 +32,9 @@ def main():
     dag = closure('http2_receive_credit_store', source)
     assert set(dag) == {'http2_receive_credit_store', 'memory_command_slot'}
     for p in dag.values():
-        name = p.relative_to(source).as_posix(); assert sha(p) == inputs[name] == sha(root / name)
+        name = p.relative_to(source).as_posix(); assert sha(p) == inputs[name] == sha(source_path(root, name))
     for name in ('sim/cocotb/test_receive_credit_store.py',):
-        assert inputs[name] == sha(root / name), name
+        assert inputs[name] == sha(source_path(root, name)), name
     xml = ET.parse(archive / 'results.xml'); cases = xml.findall('.//testcase')
     assert len(cases) == 1 and cases[0].attrib['name'] == 'native_receive_credit_memory_and_wire_retirement'
     assert not xml.findall('.//failure') and not xml.findall('.//error')
@@ -68,7 +70,7 @@ def main():
         assert set(closure(top, frozen)) == set(dag)
         for p in closure(top, frozen).values():
             n = p.relative_to(frozen).as_posix(); assert sha(p) == inputs[n], n
-        log = root / ('build/' + args.native_run + '-implementation.log'); log_bytes = log.read_bytes(); text = log_bytes.decode()
+        log = source_path(root, 'build/' + args.native_run + '-implementation.log'); log_bytes = log.read_bytes(); text = log_bytes.decode()
         assert f'REGISTERED_SUBSYSTEM_SYNTHESIS_COMPLETE TOP={top} PART={part}' in text
         assert '0 Critical Warnings and 0 Errors encountered.' in text and 'synth_design completed successfully' in text
         exceptions = [line.strip() for line in (frozen / 'scripts/implement_registered_subsystem.tcl').read_text().splitlines() if line.strip().startswith('set_false_path')]

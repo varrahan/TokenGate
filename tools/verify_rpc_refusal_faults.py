@@ -14,6 +14,8 @@ from hyperframe.frame import Frame
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--candidate',choices=('rpc-stream-refusal-v7','rpc-registered-frame-select-v1'),default='rpc-stream-refusal-v7');args=ap.parse_args()
@@ -56,7 +58,7 @@ def main():
         if n in launch['parent_inputs_sha256']:assert edit['before_sha256']==launch['parent_inputs_sha256'][n]
     assert inputs['build/bidirectional-fixtures/memory.mem']==launch['parent_inputs_sha256']['build/bidirectional-fixtures/memory.mem']
     test='sim/cocotb/test_rpc_refusal_faults.py'
-    assert sha(source/test)==sha(root/test)
+    assert sha(source/test)==sha(source_path(root, test))
     xml=ET.parse(folder/'results.xml');tests=xml.findall('.//testcase')
     assert len(tests)==1 and tests[0].attrib['name']=='every_refused_data_ack_fault_preserves_wire_and_quarantine'
     assert not xml.findall('.//failure') and not xml.findall('.//error')
@@ -145,7 +147,7 @@ def main():
         native_vendor_runtime_verified=False,full_protocol_fault_matrix_verified=False,
         whole_rpc_gpu_maintenance_authority_verified=False,native_timing_verified=False,full_system_complete=False,
         injections=details,predecessor_failure_state_sha256=sha(negative/'fault-state-timeout-packet_result_valid.json'),
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in folder.iterdir()if p.is_file()},
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in folder.iterdir()if p.is_file()},
         verifier_sha256=sha(Path(__file__)))
     if registered:result.update(candidate=args.candidate,registered_selection_unit_audit_key=selection_audit['key'],
         registered_selection_directed_audit_key=actual_directed['key'],phase='registered_selection_all_46_physical_ack_faults_verified')

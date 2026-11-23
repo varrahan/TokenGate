@@ -11,6 +11,8 @@ import tempfile
 import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -19,7 +21,7 @@ def main():
     for name,record in provenance['files'].items():assert sha(frozen/name)==record['sha256']
     functional=json.loads((root/'build/validation/hyperram-startup.json').read_text())
     for name in ('axi_hyperram_bridge','hyperram_transaction_engine','hyperram_startup','axi_hyperram_controller'):
-        path='rtl/'+name+'.v';digest=sha(root/path)
+        path='rtl/'+name+'.v';digest=sha(source_path(root, path))
         assert digest==provenance['files'][path]['sha256']
         assert all(c['inputs_sha256'][path]==digest for c in functional['cases'].values())
     script=frozen/'scripts/implement_hyperram_word_controller.tcl'
@@ -81,7 +83,7 @@ def main():
         package_input_false_paths=173,package_output_false_paths=164,
         pin_level_ddr_phy_verified=False,rwds_cdc_verified=False,package_timing_verified=False,
         application_instantiation_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in artifacts})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in artifacts})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/hyperram-word-native-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
     (evidence/'verified.json').write_text(json.dumps(result,indent=2)+'\n')

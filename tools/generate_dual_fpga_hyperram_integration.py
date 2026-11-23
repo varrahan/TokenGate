@@ -10,6 +10,8 @@ from generate_hyperram_cdc_timing_harness import ports
 from generate_two_fpga_application import balanced
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def net_declaration(text):
     """Keep each net initializer as the same explicit continuous assignment."""
@@ -184,7 +186,7 @@ def main():
                 assert digest == parser_generation['outputs_sha256']['rtl/' + source.name]
             else:
                 assert digest == tokenizer_audit['inputs_sha256']['rtl/' + source.name]
-            inputs[source.relative_to(root).as_posix()] = digest
+            inputs[source_relative(source, root).as_posix()] = digest
             content = source.read_bytes()
             if label == 'parser':
                 assert digest == scan[source.name]['source_sha256']
@@ -202,7 +204,7 @@ def main():
     for relative in ('vendor/xpm_cdc.sv', 'vendor/xpm_memory.sv', 'vendor/xpm_fifo.sv', 'vendor/glbl.v'):
         source = tokenizer_root / relative
         assert sha(source) == tokenizer_audit['inputs_sha256'][relative]
-        inputs[source.relative_to(root).as_posix()] = sha(source)
+        inputs[source_relative(source, root).as_posix()] = sha(source)
         save('joint/' + relative, source.read_bytes())
     pports = ports((parser_root / 'rtl/http2_enveloped_parser_application.v').read_text(), 'http2_enveloped_parser_application')
     tports = ports((tokenizer_root / 'rtl/tokenizer_hyperram_subsystem.v').read_text(), 'tokenizer_hyperram_subsystem')

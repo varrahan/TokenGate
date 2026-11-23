@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -28,17 +30,17 @@ def main():
     assert 'http2_frame_reader' not in dependencies and 'proto_json_serializer' not in dependencies
     provenance = json.loads((native / 'source-provenance.json').read_text())
     for name, record in provenance['files'].items():
-        path = source_root / name
+        path = source_path(source_root, name)
         assert path.stat().st_size == record['bytes'] and sha(path) == record['sha256'], ('Native frozen input changed', name)
     for path in set(dependencies.values()):
-        assert path.relative_to(source_root).as_posix() in provenance['files']
+        assert source_relative(path, source_root).as_posix() in provenance['files']
     harness = (source_root / 'timing_harness.v').read_text()
     assert re.search(r'\btokenizer_fpga_memory_subsystem\s+#\s*\(', harness)
     implementation = (source_root / 'scripts/implement_registered_subsystem.tcl').read_text()
     exceptions = [line.strip() for line in implementation.splitlines() if line.strip().startswith('set_false_path')]
     assert exceptions == ['set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]',
                           'set_false_path -to [all_outputs]'], ('Unexpected timing exceptions', exceptions)
-    log = root / f'build/{args.native_run}-implementation.log'
+    log = source_path(root, f'build/{args.native_run}-implementation.log')
     text = log.read_text()
     assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=tokenizer_fpga_memory_subsystem PART=xcsu35p-sbvb625-2-e' in text
     assert '0 Critical Warnings and 0 Errors encountered.' in text
@@ -57,8 +59,8 @@ def main():
     checks = [dict(rule=rule, severity=severity, checks=int(count)) for rule, severity, count in drc_rows]
     assert sum(c['checks'] for c in checks) == int(re.search(r'Checks found:\s*(\d+)', drc)[1])
     assert not any(c['severity'] in ('Error', 'Critical Warning') for c in checks)
-    current_rtl_changes = [path.relative_to(source_root).as_posix() for path in set(dependencies.values())
-                           if not (root / path.relative_to(source_root)).is_file() or sha(root / path.relative_to(source_root)) != sha(path)]
+    current_rtl_changes = [source_relative(path, source_root).as_posix() for path in set(dependencies.values())
+                           if not (source_path(root, source_relative(path, source_root))).is_file() or sha(source_path(root, source_relative(path, source_root))) != sha(path)]
     result = dict(phase='native_tokenizer_memory_timing_met' if met else 'native_tokenizer_memory_timing_pending',
         verified_utc=datetime.now(timezone.utc).isoformat(), top='tokenizer_fpga_memory_subsystem', part='xcsu35p-sbvb625-2-e',
         native_run=args.native_run, native_exact_rtl_files=len(set(dependencies.values())), exact_rtl_modules=list(dependencies),
@@ -94,8 +96,8 @@ def main():
             assert snapshot['source_and_fixture_sha256'][name] == digest
             assert sha(executed / name) == digest, ('Executed source changed', name)
             if name.startswith('rtl/'):
-                assert sha(source_root / name) == digest, ('Native/simulation RTL differs', name)
-        assert all(report['source_sha256'][path.relative_to(source_root).as_posix()] == sha(path)
+                assert sha(source_path(source_root, name)) == digest, ('Native/simulation RTL differs', name)
+        assert all(report['source_sha256'][source_relative(path, source_root).as_posix()] == sha(path)
                    for path in set(dependencies.values()))
         assert (acceptance['packets'], acceptance['headers'], acceptance['messages'], acceptance['token_ids'],
                 acceptance['response_chunks'], acceptance['response_bytes']) == (38, 21, 16, 2828, 2828, 144686)
@@ -122,10 +124,10 @@ def main():
         files[Path('verification/run_cocotb_snapshot.py')] = executed / 'scripts/run_cocotb_snapshot.py'
         files[Path('verification/verify_tokenizer_fpga_memory.py')] = Path(__file__)
         for path in set(dependencies.values()):
-            files[Path('native/sources') / path.relative_to(source_root)] = path
+            files[Path('native/sources') / source_relative(path, source_root)] = path
         for name in provenance['files']:
             if not name.startswith('rtl/'):
-                files[Path('native/sources') / name] = source_root / name
+                files[Path('native/sources') / name] = source_path(source_root, name)
         for name, source in files.items():
             target = evidence / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -138,7 +140,7 @@ def main():
             fixtures_verified=len(report['fixture_sha256']), evidence_folder=str(evidence),
             execution_archive_primary_differences=snapshot['current_primary_changed_inputs'],
             execution_current_primary_differences=[name for name,digest in {**report['source_sha256'],**report['fixture_sha256']}.items()
-                if not (root/name).is_file() or sha(root/name)!=digest], verifier_sha256=sha(Path(__file__)))
+                if not (source_path(root, name)).is_file() or sha(source_path(root, name))!=digest], verifier_sha256=sha(Path(__file__)))
         output = root / 'build/validation/tokenizer-fpga-memory.json'
     output.write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))

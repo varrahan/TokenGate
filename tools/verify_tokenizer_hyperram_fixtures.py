@@ -13,6 +13,8 @@ from trie_image import validate_trie
 from vocabulary_image import decode_image,pair_hash
 from generate_rpc_response_vectors import packet
 
+from rtl_paths import source_relative
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--run',required=True);args=parser.parse_args()
@@ -123,7 +125,7 @@ def main():
         bijective_ascii_case_model_permutation_verified=True,forward_sequences=sequences,token_ids=tokens,inverse_chunks=chunks,
         serialized_response_bytes=serialized,first_sequence_token_ids=[reference['cases'][epoch][0]['token_ids']for epoch in range(2)],
         image_reload_hardware_verified=False,functional_hardware_simulation_verified=False,full_system_complete=False,
-        artifacts_sha256={path.relative_to(root).as_posix():sha(path)for path in sorted(artifacts)})
+        artifacts_sha256={source_relative(path, root).as_posix():sha(path)for path in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     output=root/'build/validation/tokenizer-hyperram-fixtures.json';output.write_text(json.dumps(result,indent=2)+'\n')
     shutil.copy2(output,evidence/'verified.json');shutil.copy2(Path(__file__),evidence/Path(__file__).name)

@@ -7,13 +7,15 @@ import shutil
 from generate_receive_pool_experiment import replace
 from generate_two_fpga_application import instance,named_instance,header_end
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
     previous=root/'build/experiments/window-cause/rtl'
     folder=root/'build/experiments/window-authority';target=folder/'rtl';target.mkdir(parents=True,exist_ok=True)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    inputs={p.relative_to(root).as_posix():sha(p) for p in previous.glob('*.v')}
+    inputs={source_relative(p, root).as_posix():sha(p) for p in previous.glob('*.v')}
     for p in previous.glob('*.v'):shutil.copy2(p,target/p.name)
     name='http2_pipelined_cancel_window_store';text=(previous/(name+'.v')).read_text()
     end=header_end(text,name);text=text[:end]+',\n    input wire req_global_format\n'+text[end:]

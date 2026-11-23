@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import rename
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];outputs=[];sources=[]
-    source=root/'rtl/http2_cancel_send_window_store.v';sources.append(source);text=source.read_text()
+    source=source_path(root, 'rtl/http2_cancel_send_window_store.v');sources.append(source);text=source.read_text()
     text=rename(text,'http2_cancel_send_window_store','http2_pipelined_cancel_window_store')
     text=replace_once(text,'GEOMETRY=13;', 'GEOMETRY=13,RESERVE_APPLY=14;')
     text=replace_once(text,'wire [31:0] grant_limit=connection_limit<window_record[95:64]?connection_limit:window_record[95:64];',
@@ -33,7 +35,7 @@ def main():
                 write_words(WRESERVE,0);
             end
             SCAN_NEXT:if(''')
-    target=root/'rtl/http2_pipelined_cancel_window_store.v';target.write_text(text);outputs.append(target)
+    target=source_path(root, 'rtl/http2_pipelined_cancel_window_store.v');target.write_text(text);outputs.append(target)
     variants=(('http2_owned_cancel_windows','http2_owned_pipelined_cancel_windows',
         'http2_cancel_send_window_store','http2_pipelined_cancel_window_store'),
         ('http2_fenced_frame_grants','http2_fenced_pipelined_grants',
@@ -41,14 +43,14 @@ def main():
         ('grpc_cancellable_registered_framer','grpc_cancellable_pipelined_framer',
         'http2_fenced_frame_grants','http2_fenced_pipelined_grants'))
     for old_name,new_name,old_child,new_child in variants:
-        source=root/f'rtl/{old_name}.v';sources.append(source);text=rename(source.read_text(),old_name,new_name)
+        source=source_path(root, f'rtl/{old_name}.v');sources.append(source);text=rename(source.read_text(),old_name,new_name)
         text=replace_once(text,old_child+' #(',new_child+' #(')
-        target=root/f'rtl/{new_name}.v';target.write_text(text);outputs.append(target)
+        target=source_path(root, f'rtl/{new_name}.v');target.write_text(text);outputs.append(target)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/pipelined-cancel-framer-generation.json').write_text(json.dumps(dict(
         phase='generated_registered_credit_selection_and_message_input',
-        input_sha256={p.relative_to(root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
-        generated_sha256={p.relative_to(root).as_posix():sha(p)for p in outputs},
+        input_sha256={source_relative(p, root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
+        generated_sha256={source_relative(p, root).as_posix():sha(p)for p in outputs},
         minimum_registered_before_debit=True,memory_transaction_order_unchanged=True,
         pool_and_cached_load_ownership_preserved=True,full_system_complete=False),indent=2)+'\n')
     print('Generated registered grant minimum with the actual owned wire/framer path')

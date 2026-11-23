@@ -12,6 +12,8 @@ from hyperframe.frame import Frame
 from generate_two_fpga_application import balanced
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser()
@@ -135,7 +137,7 @@ def main():
             implementation=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
             exceptions=[x.strip()for x in implementation.splitlines()if x.strip().startswith('set_false_path')]
             assert exceptions==['set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']
-            log=root/f'build/{run}-implementation.log'
+            log=source_path(root, f'build/{run}-implementation.log')
             assert f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={component_top} PART=xcsu35p-sbvb625-2-e' in log.read_text()
             assert 'ERROR: [Synth' not in log.read_text() and 'Found timing loop' not in log.read_text()
             clocks=timing(native/'routed_timing.rpt');area=resources(native/'routed_utilization.rpt')
@@ -152,7 +154,7 @@ def main():
             files[Path('native')/label/'implementation.log']=log
     key=hashlib.sha256(''.join(sha(files[p])for p in sorted(files)).encode()).hexdigest()[:16]
     prefix='two-fpga-controlled' if args.control_fork else 'two-fpga-framed'
-    evidence=root/('build/validation/'+prefix+'-evidence')/key
+    evidence=source_path(root, Path('build/validation/'+prefix+'-evidence') / (key))
     for name,source in files.items():
         target=evidence/name;target.parent.mkdir(parents=True,exist_ok=True)
         if target.exists():assert sha(target)==sha(source)
@@ -160,13 +162,13 @@ def main():
     result=dict(phase='functional_passed_component_timing_met' if native_results and all(x['routed_timing_met']for x in native_results.values()) else 'functional_passed_component_timing_pending',
         verified_utc=datetime.now(timezone.utc).isoformat(),acceptance=accepted,parser_modules=list(parser_dag),tokenizer_modules=list(tokenizer_dag),
         execution_sources=len(report['source_sha256']),execution_fixtures=len(report['fixture_sha256']),native_components=native_results,
-        current_primary_differences=[name for name,digest in inputs.items()if not(root/name).is_file()or sha(root/name)!=digest],
+        current_primary_differences=[name for name,digest in inputs.items()if not(source_path(root, name)).is_file()or sha(source_path(root, name))!=digest],
         evidence_folder=str(evidence),verifier_sha256=sha(Path(__file__)),
         raw_application_and_framed_return_joined=True,actual_window_update_ingress_verified=True,full_metadata_control_fork_integrated=args.control_fork,
         complete_parser_native_fit_verified=False,complete_parser_native_timing_verified=False,
         credit_ledger_verified=False,headers_trailers_verified=False,whole_rpc_image_leases_verified=False,
         physical_interfaces_verified=False,independent_clocks_verified=False,full_system_complete=False)
-    (root/('build/validation/'+prefix+'.json')).write_text(json.dumps(result,indent=2)+'\n')
+    (source_path(root, 'build/validation/'+prefix+'.json')).write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result,indent=2))
 
 

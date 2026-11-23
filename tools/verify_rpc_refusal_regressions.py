@@ -12,6 +12,8 @@ from verify_frame_event_buffer_protocol import differences,timing_path
 from verify_native_grpc_corpus_reference import verify_reference
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];read=lambda p:json.loads(p.read_text())
@@ -136,7 +138,7 @@ def main():
         exact_parser_modules=78,exact_tokenizer_modules=22,portable_memory_backend=True,
         new_refusal_branch_exercised=False,native_vendor_runtime_verified=False,full_protocol_fault_matrix_verified=False,
         whole_rpc_gpu_maintenance_authority_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in sorted(artifacts)})
     if registered:result.update(registered_selection_unit_audit_key=directed['key'],registered_selection_gpu_audit_key=gpu_audit['key'],
         actual_eight_source_promise_assertions_verified=True,phase='registered_selection_original_regressions_verified')
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]

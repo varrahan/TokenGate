@@ -4,10 +4,12 @@ import json
 from pathlib import Path
 from generate_hyperram_cdc_timing_harness import ports
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    source = root/'rtl/axi_hyperram_async_controller.v'
+    source = source_path(root, 'rtl/axi_hyperram_async_controller.v')
     interface = ports(source.read_text(), 'axi_hyperram_async_controller')
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     clocks = ('app_clk', 'mem_clk'); resets = ('app_reset', 'mem_reset')

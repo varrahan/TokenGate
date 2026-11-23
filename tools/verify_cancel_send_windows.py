@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();files={};results={}
@@ -24,8 +26,8 @@ def main():
         assert len(tests)==1 and tests[0].attrib['name']==test and not xml.findall('.//failure')and not xml.findall('.//error')
         dag=closure(top,executed);assert len(dag)==count
         for p in dag.values():
-            n=p.relative_to(executed).as_posix();assert sha(p)==inputs[n]==sha(root/n),'Active RTL differs: '+n
-        differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h]
+            n=p.relative_to(executed).as_posix();assert sha(p)==inputs[n]==sha(source_path(root, n)),'Active RTL differs: '+n
+        differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h]
         results[label]=dict(acceptance=accepted,execution_inputs=len(inputs),production_modules=list(dag),current_active_rtl_matches=True,current_primary_differences=differences)
         for n in inputs:files[Path(label)/'execution'/n]=executed/n
         for n in('report.json','snapshot.json','inputs.json','acceptance.json','simulation.log','build.log','results.xml'):files[Path(label)/'reports'/n]=archive/n
@@ -69,13 +71,13 @@ def main():
     assert 'owned_window_rsp_op==9||owned_window_rsp_op==10)'in grant_rtl
     assert '.lease_rsp_ready(lease_rsp_ready&&(!frame_active||finish_valid)&&!start_valid&&finish_ready)'in grant_rtl
     run='http2_key_close_scu35_initial';folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/run
-    if 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=http2_owned_cancel_windows PART=xcsu35p-sbvb625-2-e'in(root/f'build/{run}-implementation.log').read_text():
+    if 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=http2_owned_cancel_windows PART=xcsu35p-sbvb625-2-e'in(source_path(root, f'build/{run}-implementation.log')).read_text():
         frozen=folder/'sources';provenance=json.loads((folder/'source-provenance.json').read_text())
         for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
         dag=closure('http2_owned_cancel_windows',frozen);assert len(dag)==5
         active={p.relative_to(frozen).as_posix()for p in dag.values()}
-        for n in active:assert sha(frozen/n)==unit_inputs[n]==sha(root/n)
-        log=root/f'build/{run}-implementation.log';assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=http2_owned_cancel_windows PART=xcsu35p-sbvb625-2-e'in log.read_text()
+        for n in active:assert sha(frozen/n)==unit_inputs[n]==sha(source_path(root, n))
+        log=source_path(root, f'build/{run}-implementation.log');assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=http2_owned_cancel_windows PART=xcsu35p-sbvb625-2-e'in log.read_text()
         script=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
         assert[line.strip()for line in script.splitlines()if line.strip().startswith('set_false_path')]==[
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']
@@ -91,11 +93,11 @@ def main():
             if n in active or not n.startswith('rtl/'):files[Path('native/sources')/n]=frozen/n
     else:results['native']=dict(phase='route_not_yet_verified',run=run)
     wire_run='axis_cancellable_arbiter_scu35_initial';wire_folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/wire_run
-    wire_log=root/f'build/{wire_run}-implementation.log'
+    wire_log=source_path(root, f'build/{wire_run}-implementation.log')
     if wire_log.is_file()and 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=axis_cancellable_frame_arbiter PART=xcsu35p-sbvb625-2-e'in wire_log.read_text():
         frozen=wire_folder/'sources';provenance=json.loads((wire_folder/'source-provenance.json').read_text())
         for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
-        name='rtl/axis_cancellable_frame_arbiter.v';assert sha(frozen/name)==wire_inputs[name]==sha(root/name)
+        name='rtl/axis_cancellable_frame_arbiter.v';assert sha(frozen/name)==wire_inputs[name]==sha(source_path(root, name))
         clocks=timing(wire_folder/'routed_timing.rpt');area=resources(wire_folder/'routed_utilization.rpt')
         assert area['registers']==3 and area['bram36']==area['bram18']==area['uram']==area['dsps']==0
         assert clocks['setup_wns_ns']>=0 and clocks['hold_whs_ns']>=0 and clocks['setup_failing_endpoints']==clocks['hold_failing_endpoints']==0

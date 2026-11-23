@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--raw-snapshot');parser.add_argument('--full',action='store_true');args=parser.parse_args()
@@ -31,8 +33,8 @@ def main():
         assert len(tests)==1 and tests[0].attrib['name']==test and not xml.findall('.//failure')and not xml.findall('.//error')
         dag=closure(top,executed);assert len(dag)==count
         active={p.relative_to(executed).as_posix()for p in dag.values()}
-        assert all(sha(root/n)==inputs[n]for n in active),'Active RTL differs from the executed snapshot'
-        differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h]
+        assert all(sha(source_path(root, n))==inputs[n]for n in active),'Active RTL differs from the executed snapshot'
+        differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h]
         records[label]=dict(acceptance=accepted,execution_inputs=len(inputs),production_modules=list(dag),current_primary_differences=differences,current_active_rtl_matches=True)
         for n in inputs:files[Path(label)/'execution'/n]=executed/n
         for n in('report.json','snapshot.json','acceptance.json','simulation.log','build.log','results.xml'):files[Path(label)/'reports'/n]=archive/n
@@ -104,8 +106,8 @@ def main():
         for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
         dag=closure(top,frozen)
         for p in dag.values():
-            n=p.relative_to(frozen).as_posix();assert sha(p)==inputs[n]==sha(root/n)
-        log=root/f'build/{run}-implementation.log';assert f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={top} PART=xcsu35p-sbvb625-2-e'in log.read_text()
+            n=p.relative_to(frozen).as_posix();assert sha(p)==inputs[n]==sha(source_path(root, n))
+        log=source_path(root, f'build/{run}-implementation.log');assert f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={top} PART=xcsu35p-sbvb625-2-e'in log.read_text()
         script=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
         assert[line.strip()for line in script.splitlines()if line.strip().startswith('set_false_path')]==[
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']

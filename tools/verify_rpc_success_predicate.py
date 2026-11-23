@@ -12,6 +12,8 @@ from generate_rpc_success_predicate import edits
 from run_frame_fifo_equivalence_wsl import observe
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--name',required=True);args=ap.parse_args()
@@ -112,7 +114,7 @@ write_json equivalence-netlist.json
         parent_predicate_substitution_exact=True,public_application_ports_unchanged=True,
         arbitrary_later_resets_and_inputs=True,input_stability_assumptions=False,two_state_formal=True,
         fresh_full_application_corpus_verified=False,full_protocol_matrix_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in folder.iterdir() if p.is_file()},verifier_sha256=sha(Path(__file__)))
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in folder.iterdir() if p.is_file()},verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/rpc-success-predicate-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)
     shutil.copy2(Path(__file__),evidence/Path(__file__).name)

@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 from generate_two_fpga_application import balanced
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--functional-only',action='store_true')
@@ -97,7 +99,7 @@ def main():
     files[Path('verification/verify_http2_owned_windows.py')]=Path(__file__)
     result=dict(phase='actual_authority_functional_passed_native_pending',verified_utc=datetime.now(timezone.utc).isoformat(),
         acceptance=accepted,active_rtl_modules=list(dependencies),execution_inputs=len(inputs),single_actual_directory_verified=True,
-        authority_from_actual_pool_lock_verified=True,current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h],
+        authority_from_actual_pool_lock_verified=True,current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h],
         raw_control_integrated=False,framer_grants_integrated=False,send_closed_lifecycle_verified=args.lifecycle,
         key_only_window_update_verified=args.keyed,unknown_stream_wire_classification_integrated=False,
         actual_closing_wire_frame_integrated=False,
@@ -114,7 +116,7 @@ def main():
         script=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
         assert[line.strip()for line in script.splitlines()if line.strip().startswith('set_false_path')]==[
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']
-        log=root/f'build/{args.native_run}-implementation.log'
+        log=source_path(root, f'build/{args.native_run}-implementation.log')
         assert f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={top} PART=xcsu35p-sbvb625-2-e'in log.read_text()
         assert '0 Critical Warnings and 0 Errors encountered.'in log.read_text()and 'ERROR: [Synth'not in log.read_text()
         area=resources(native/'routed_utilization.rpt');clocks=timing(native/'routed_timing.rpt')

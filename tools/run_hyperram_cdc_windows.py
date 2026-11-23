@@ -8,13 +8,15 @@ import re
 import shutil
 import subprocess
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name',required=True);parser.add_argument('--fifo-override',type=Path,required=True);args=parser.parse_args()
     assert re.fullmatch(r'[A-Za-z0-9_]+',args.name)
     root=Path(__file__).resolve().parents[1];folder=root/'build/validation'/args.name;folder.mkdir(parents=True,exist_ok=False)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();installed=Path('C:/AMDDesignTools/2025.2/Vivado')
-    original={'rtl/cdc_packet_fifo.v':args.fifo_override.resolve(),'rtl/hyperram_clock_bridge.v':root/'rtl/hyperram_clock_bridge.v',
+    original={'rtl/cdc_packet_fifo.v':args.fifo_override.resolve(),'rtl/hyperram_clock_bridge.v':source_path(root, 'rtl/hyperram_clock_bridge.v'),
         'sim/tb_hyperram_clock_bridge.sv':root/'sim/tb_hyperram_clock_bridge.sv','vendor/glbl.v':installed/'data/verilog/src/glbl.v'}
     for macro in('cdc','memory','fifo'):original['vendor/xpm_'+macro+'.sv']=installed/'data/ip/xpm'/('xpm_'+macro)/'hdl'/('xpm_'+macro+'.sv')
     inputs={}

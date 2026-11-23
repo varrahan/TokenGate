@@ -6,12 +6,14 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import instance, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    rpc_path = root / 'rtl/rpc_response_parser_partition.v'
-    core_path = root / 'rtl/http2_parser_partition_core.v'
-    app_path = root / 'rtl/http2_parser_fpga_application.v'
+    rpc_path = source_path(root, 'rtl/rpc_response_parser_partition.v')
+    core_path = source_path(root, 'rtl/http2_parser_partition_core.v')
+    app_path = source_path(root, 'rtl/http2_parser_fpga_application.v')
     rpc = ports(rpc_path.read_text(), 'rpc_response_parser_partition')
     serializer_public = [p for p in ports(app_path.read_text(), 'http2_parser_fpga_application') if p[2].startswith('link_s_')]
     public = [p for p in rpc if p[2] != 'local_tx_accepted'] + serializer_public
@@ -111,11 +113,11 @@ def main():
             result_status='framer_status', result_user='', result_stream='', result_message_bytes='framer_message_bytes',
             result_wire_bytes='framer_wire_bytes', result_frames='framer_frames', result_tx_emitted='framer_tx_emitted', idle='framer_idle')),
         'endmodule', '`default_nettype wire', '']
-    target = root / 'rtl/rpc_grpc_parser_response.v'
+    target = source_path(root, 'rtl/rpc_grpc_parser_response.v')
     target.write_text('\n'.join(lines))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     result = dict(phase='generated_parser_rpc_and_data_framing',
-        inputs_sha256={p.relative_to(root).as_posix(): sha(p) for p in (rpc_path, core_path, app_path, Path(__file__))},
+        inputs_sha256={source_relative(p, root).as_posix(): sha(p) for p in (rpc_path, core_path, app_path, Path(__file__))},
         generated_sha256=sha(target), full_transport_verified=False, distributed_image_leases_verified=False)
     (root / 'build/validation/rpc-grpc-parser-generation.json').write_text(json.dumps(result, indent=2) + '\n')
     print('Generated actual Parser RPC/serializer/DATA-framer join with public-retirement LOAD fencing')

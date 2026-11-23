@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import instance,named_instance,rename
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    original=root/'rtl/grpc_http2_response_framer.v';text=original.read_text()
+    original=source_path(root, 'rtl/grpc_http2_response_framer.v');text=original.read_text()
     text=rename(text,'grpc_http2_response_framer','grpc_registered_input_framer')
     text=replace_once(text,'wire [USER_WIDTH:0] input_user;', '''wire [USER_WIDTH:0] input_user;
     // Register data, keep, end marker and abort/context together. Sparse-lane
@@ -30,15 +32,15 @@ def main():
         'assign start_ready=!rst&&state==IDLE&&unpack_idle&&!input_valid;')
     text=replace_once(text,'assign idle=state==IDLE&&unpack_idle&&!m_axis_tx_tvalid;',
         'assign idle=state==IDLE&&unpack_idle&&!input_valid&&!m_axis_tx_tvalid;')
-    framer=root/'rtl/grpc_registered_input_framer.v';framer.write_text(text)
-    parent=root/'rtl/grpc_cancellable_window_framer.v'
+    framer=source_path(root, 'rtl/grpc_registered_input_framer.v');framer.write_text(text)
+    parent=source_path(root, 'rtl/grpc_cancellable_window_framer.v')
     joined=rename(parent.read_text(),'grpc_cancellable_window_framer','grpc_cancellable_registered_framer')
     joined=replace_once(joined,'grpc_http2_response_framer #(', 'grpc_registered_input_framer #(')
-    target=root/'rtl/grpc_cancellable_registered_framer.v';target.write_text(joined)
+    target=source_path(root, 'rtl/grpc_cancellable_registered_framer.v');target.write_text(joined)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     result=dict(phase='generated_registered_byte_input_framer',
-        input_sha256={p.relative_to(root).as_posix():sha(p)for p in(original,parent,root/'rtl/axis_skid_buffer.v',Path(__file__))},
-        generated_sha256={p.relative_to(root).as_posix():sha(p)for p in(framer,target)},
+        input_sha256={source_relative(p, root).as_posix():sha(p)for p in(original,parent,source_path(root, 'rtl/axis_skid_buffer.v'),Path(__file__))},
+        generated_sha256={source_relative(p, root).as_posix():sha(p)for p in(framer,target)},
         sparse_lane_mux_registered_before_message_bram=True,data_keep_last_context_abort_registered_together=True,
         existing_framer_and_cancellation_variants_preserved=True,full_system_complete=False)
     (root/'build/validation/registered-input-framer-generation.json').write_text(json.dumps(result,indent=2)+'\n')

@@ -7,10 +7,12 @@ from generate_bidirectional_application import ports
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import add_ports, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    source = root / 'rtl/http2_cancel_frame_grants.v'
+    source = source_path(root, 'rtl/http2_cancel_frame_grants.v')
     text = source.read_text().replace('http2_cancel_frame_grants', 'http2_fenced_frame_grants')
     extra = [('input', '', 'freeze_valid'), ('output', '', 'freeze_ready'),
         ('input', '[USER_WIDTH-1:0]', 'freeze_user'), ('input', '[30:0]', 'freeze_stream'),
@@ -86,11 +88,11 @@ end''')
          'IDLE:if(owned_request_ready&&(control_pending||reserve_pending))state<=control_pending?CONTROL:RESERVE;'),
     )
     for old,new in substitutions:text=replace_once(text,old,new)
-    scheduler = root / 'rtl/http2_fenced_frame_grants.v';scheduler.write_text(text)
+    scheduler = source_path(root, 'rtl/http2_fenced_frame_grants.v');scheduler.write_text(text)
 
     sched_ports=ports(text,'http2_fenced_frame_grants')
-    framer_path=root/'rtl/grpc_http2_response_framer.v';framer_ports=ports(framer_path.read_text(),'grpc_http2_response_framer')
-    arb_path=root/'rtl/axis_cancellable_frame_arbiter.v';arb_ports=ports(arb_path.read_text(),'axis_cancellable_frame_arbiter')
+    framer_path=source_path(root, 'rtl/grpc_http2_response_framer.v');framer_ports=ports(framer_path.read_text(),'grpc_http2_response_framer')
+    arb_path=source_path(root, 'rtl/axis_cancellable_frame_arbiter.v');arb_ports=ports(arb_path.read_text(),'axis_cancellable_frame_arbiter')
     hidden={'start_valid','start_ready','start_user','start_stream','finish_valid','finish_ready','frame_tx_done','idle',
         'frame_req_valid','frame_req_ready','frame_req_user','frame_req_stream','frame_req_max_bytes','frame_grant_bytes'}
     public=[p for p in sched_ports if p[2]not in hidden]
@@ -128,11 +130,11 @@ end''')
     ac.update({f'm_axis_{n}':f'm_axis_tx_{n}'for n in('tdata','tkeep','tvalid','tready','tlast','tuser')})
     lines += [named_instance('axis_cancellable_frame_arbiter','.DATA_WIDTH(512),.USER_WIDTH(USER_WIDTH)','wire_arbiter',ac),
         'endmodule','`default_nettype wire','']
-    target=root/'rtl/grpc_cancellable_window_framer.v';target.write_text('\n'.join(lines))
+    target=source_path(root, 'rtl/grpc_cancellable_window_framer.v');target.write_text('\n'.join(lines))
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     result=dict(phase='generated_keyed_freeze_and_actual_wire_framer',
-        input_sha256={p.relative_to(root).as_posix():sha(p)for p in(source,framer_path,arb_path,Path(__file__))},
-        generated_sha256={p.relative_to(root).as_posix():sha(p)for p in(scheduler,target)},
+        input_sha256={source_relative(p, root).as_posix():sha(p)for p in(source,framer_path,arb_path,Path(__file__))},
+        generated_sha256={source_relative(p, root).as_posix():sha(p)for p in(scheduler,target)},
         positive_grant_owned_until_actual_wire_tlast=True,same_edge_freeze_blocks_dispatch=True,
         external_reserve_withheld=True,actual_rst_controller_integrated=False,full_system_complete=False)
     (root/'build/validation/fenced-frame-grants-generation.json').write_text(json.dumps(result,indent=2)+'\n')

@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def differences(actual,baseline,path=()):
     if type(actual)!=type(baseline):
@@ -89,7 +91,7 @@ def main():
         all_operation_data_status_and_scope_traces_equal_baselines=True,
         timing_measurement_differences_preserved=True,full_protocol_matrix_verified=False,
         latest_31_module_tokenizer_controller_integrated=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     audit_name=args.candidate+'-protocol'
     target=root/'build/validation'/(audit_name+'-evidence')/result['key'];target.mkdir(parents=True,exist_ok=False)

@@ -5,10 +5,12 @@ from pathlib import Path
 
 from generate_bidirectional_application import ports
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    paths=[root/'rtl/axi_hyperram_bridge.v',root/'rtl/hyperram_transaction_engine.v']
+    paths=[source_path(root, 'rtl/axi_hyperram_bridge.v'),source_path(root, 'rtl/hyperram_transaction_engine.v')]
     fp=ports(paths[0].read_text(),'axi_hyperram_bridge');ep=ports(paths[1].read_text(),'hyperram_transaction_engine')
     public=[(d,w.replace('ADDR_WIDTH','23'),n)for d,w,n in fp if n in('clk','rst')or n.startswith('s_axi_')]
     public +=[(d,w,n)for d,w,n in ep if n in('enable','cfg_latency','cfg_fixed_latency')or n.startswith('phy_')]
@@ -30,7 +32,7 @@ def main():
     lines +=['hyperram_transaction_engine #(.MEMORY_CLOCK_HZ(MEMORY_CLOCK_HZ)) engine(',
         ',\n'.join(f'    .{n}({connections[n]})'for _,_,n in ep),');','endmodule','`default_nettype wire','']
     target=root/'sim/cocotb_axi_hyperram_engine_top.sv';target.write_text('\n'.join(lines))
-    result=dict(generator_sha256=sha(Path(__file__)),input_sha256={str(p.relative_to(root)).replace('\\','/'):sha(p)for p in paths},
+    result=dict(generator_sha256=sha(Path(__file__)),input_sha256={str(source_relative(p, root)).replace('\\','/'):sha(p)for p in paths},
         port_parser_sha256=sha(root/'tools/generate_bidirectional_application.py'),fixture_sha256=sha(target),
         actual_production_modules_connected=True,physical_phy_present=False,full_system_complete=False)
     folder=root/'build/hyperram-engine';folder.mkdir(parents=True,exist_ok=True)

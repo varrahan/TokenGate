@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();files={};records={}
@@ -25,9 +27,9 @@ def main():
         assert len(cases)==1 and cases[0].attrib['name']==test and not xml.findall('.//failure')and not xml.findall('.//error')
         dag=closure(top,executed);assert len(dag)==count
         for p in dag.values():
-            n=p.relative_to(executed).as_posix();assert sha(root/n)==inputs[n],'Active RTL differs: '+n
+            n=p.relative_to(executed).as_posix();assert sha(source_path(root, n))==inputs[n],'Active RTL differs: '+n
         records[label]=dict(acceptance=accepted,execution_inputs=len(inputs),production_modules=list(dag),current_active_rtl_matches=True,
-            current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h])
+            current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h])
         for n in inputs:files[Path(label)/'execution'/n]=executed/n
         for n in('report.json','snapshot.json','inputs.json','acceptance.json','simulation.log','build.log','results.xml'):files[Path(label)/'reports'/n]=archive/n
         return accepted,executed,inputs
@@ -85,7 +87,7 @@ def main():
     parent=(joined_root/'rtl/grpc_cancellable_pipelined_framer.v').read_text()
     assert '.frame_tx_done(data_tvalid&&data_tready&&data_tlast)'in parent and '.a_pause(freeze_binding_valid&&freeze_drained)'in parent
     assert '.rst(rst||'not in parent
-    run='grpc_pipelined_framer_scu35_initial';folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/run;log=root/f'build/{run}-implementation.log'
+    run='grpc_pipelined_framer_scu35_initial';folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/run;log=source_path(root, f'build/{run}-implementation.log')
     marker='REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=grpc_cancellable_pipelined_framer PART=xcsu35p-sbvb625-2-e'
     native=dict(phase='route_not_yet_verified',run=run)
     if log.is_file()and marker in log.read_text():
@@ -93,7 +95,7 @@ def main():
         for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
         dag=closure('grpc_cancellable_pipelined_framer',frozen);assert len(dag)==12
         active={p.relative_to(frozen).as_posix()for p in dag.values()}
-        for n in active:assert sha(frozen/n)==joined_inputs[n]==sha(root/n)
+        for n in active:assert sha(frozen/n)==joined_inputs[n]==sha(source_path(root, n))
         script=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
         assert[line.strip()for line in script.splitlines()if line.strip().startswith('set_false_path')]==[
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']

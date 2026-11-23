@@ -8,6 +8,8 @@ import re
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -23,12 +25,12 @@ def main():
     assert not tree.findall('.//failure')and not tree.findall('.//error')
     rtl_count=0
     for name,digest in report['source_sha256'].items():
-        assert sha(root/name)==digest,('Current source differs',name)
+        assert sha(source_path(root, name))==digest,('Current source differs',name)
         if name.startswith('rtl/'):
             assert sha(native/'sources'/name)==digest,('Native RTL differs',name)
             rtl_count+=1
     assert rtl_count==17
-    for name,digest in report['fixture_sha256'].items():assert sha(root/name)==digest,('Current fixture differs',name)
+    for name,digest in report['fixture_sha256'].items():assert sha(source_path(root, name))==digest,('Current fixture differs',name)
     fixtures=root/'build/rpc-response-fixtures';reference=json.loads((fixtures/'rpc_cases.json').read_text())
     assert reference['generator_sha256']==sha(root/'tools/generate_rpc_response_vectors.py')
     assert sha(fixtures/'memory.bin')==reference['model_image_sha256']==sha(root/'build/scu35/image/external_memory.bin')
@@ -39,7 +41,7 @@ def main():
     assert acceptance['tx_stall_cycles']and acceptance['bow_stall_cycles']and acceptance['result_stall_cycles']
     assert acceptance['blocked_control_cycles']and acceptance['directory_lease_cycles']
     assert not acceptance['whole_rpc_gpu_image_lease_verified']and not acceptance['full_transport_verified']and not acceptance['full_system_verified']
-    log=(root/f'build/{args.native_run}-implementation.log').read_text()
+    log=(source_path(root, f'build/{args.native_run}-implementation.log')).read_text()
     assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE'in log and '0 Critical Warnings and 0 Errors encountered.'in log
     assert 'Found timing loop'not in log and 'ERROR: [Synth'not in log
     timing=(native/'routed_timing.rpt').read_text()
@@ -53,7 +55,7 @@ def main():
     resources=dict(luts=int(cells[2]),registers=int(cells[6]),bram36=int(cells[7]),bram18=int(cells[8]),uram=int(cells[9]),dsps=int(cells[10]))
     key=hashlib.sha256((sha(reports/'report.json')+sha(native/'source-provenance.json')+sha(Path(__file__))).encode()).hexdigest()[:16]
     evidence=root/'build/validation/rpc-response-evidence'/key
-    files={Path(name):root/name for name in{**report['source_sha256'],**report['fixture_sha256']}}
+    files={Path(name):source_path(root, name) for name in{**report['source_sha256'],**report['fixture_sha256']}}
     files.update({Path('reports')/name:reports/name for name in('report.json','acceptance.json','results.xml','simulation.log','build.log')})
     files.update({Path('native')/name:native/name for name in('source-provenance.json','routed_timing.rpt','routed_utilization.rpt','route_status.rpt','routed_drc.rpt')})
     files[Path('verification/verify_rpc_response.py')]=Path(__file__)

@@ -6,11 +6,13 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import add_ports, instance, named_instance, rename
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    source_path=root/'rtl/http2_hpack_ingress.v'
-    fork_path=root/'rtl/http2_control_event_fork.v'
+    source_path=source_path(root, 'rtl/http2_hpack_ingress.v')
+    fork_path=source_path(root, 'rtl/http2_control_event_fork.v')
     source=source_path.read_text()
     public=[]
     fork_connections=dict(clk='clk',rst='rst',idle='control_fork_idle')
@@ -34,7 +36,7 @@ def main():
     source=source.replace('endmodule','\n'.join(['wire control_fork_idle;',*forward,
         named_instance('http2_control_event_fork','.USER_WIDTH(USER_WIDTH)','control_fork',fork_connections),'endmodule']))
     source=rename(add_ports(source,'http2_hpack_ingress',public),'http2_hpack_ingress','http2_controlled_hpack_ingress')
-    target=root/'rtl/http2_controlled_hpack_ingress.v';target.write_text(source)
+    target=source_path(root, 'rtl/http2_controlled_hpack_ingress.v');target.write_text(source)
     original=root/'sim/tb_http2_hpack.sv'
     bench=original.read_text().replace('module tb_http2_hpack;','module tb_http2_controlled_hpack;')
     declarations=[]
@@ -75,8 +77,8 @@ def main():
     harness=root/'sim/tb_http2_controlled_hpack.sv';harness.write_text(bench)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/http2-controlled-hpack-generation.json').write_text(json.dumps(dict(
-        phase='generated_controlled_hpack',inputs_sha256={p.relative_to(root).as_posix():sha(p)for p in(source_path,fork_path,original,Path(__file__))},
-        generated_sha256={p.relative_to(root).as_posix():sha(p)for p in(target,harness)},
+        phase='generated_controlled_hpack',inputs_sha256={source_relative(p, root).as_posix():sha(p)for p in(source_path,fork_path,original,Path(__file__))},
+        generated_sha256={source_relative(p, root).as_posix():sha(p)for p in(target,harness)},
         control_before_dispatch=True,credit_ledger_verified=False,full_system_complete=False),indent=2)+'\n')
     print('Generated actual HTTP/2/HPACK ingress with ordered full-metadata controls and completion fencing')
 

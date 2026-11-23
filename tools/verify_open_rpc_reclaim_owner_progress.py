@@ -9,6 +9,8 @@ import shutil
 from verify_frame_owned_quiet_progress import witness
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -62,7 +64,7 @@ def main():
         reachable_quiet_witness=reached, complete_production_owner_subtree=True,
         memory_model_substitution=False, compactor_memory_safety_formally_verified=False,
         whole_application_liveness_verified=False, application_credit_fixed=False, full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix(): sha(p) for p in folder.rglob('*') if p.is_file()},
+        artifacts_sha256={source_relative(p, root).as_posix(): sha(p) for p in folder.rglob('*') if p.is_file()},
         verifier_sha256=sha(Path(__file__)))
     result['key'] = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/open-rpc-reclaim-owner-progress-evidence' / result['key']

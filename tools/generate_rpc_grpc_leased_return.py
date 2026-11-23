@@ -6,11 +6,13 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    response_path = root / 'rtl/rpc_grpc_parser_response.v'
-    service_path = root / 'rtl/grpc_leased_stream_store.v'
+    response_path = source_path(root, 'rtl/rpc_grpc_parser_response.v')
+    service_path = source_path(root, 'rtl/grpc_leased_stream_store.v')
     response = ports(response_path.read_text(), 'rpc_grpc_parser_response')
     service = ports(service_path.read_text(), 'grpc_leased_stream_store')
     control_names = {n: 'control_' + (n[4:] if n.startswith('cfg_') else n)
@@ -58,11 +60,11 @@ def main():
     lines.append(named_instance('grpc_leased_stream_store', '.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)',
                                'directory_service', connections))
     lines += ['endmodule', '`default_nettype wire', '']
-    target = root / 'rtl/rpc_grpc_leased_return.v'
+    target = source_path(root, 'rtl/rpc_grpc_leased_return.v')
     target.write_text('\n'.join(lines))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     (root / 'build/validation/rpc-grpc-leased-generation.json').write_text(json.dumps(dict(
-        phase='generated_return_with_shared_leased_directory', inputs_sha256={p.relative_to(root).as_posix(): sha(p)
+        phase='generated_return_with_shared_leased_directory', inputs_sha256={source_relative(p, root).as_posix(): sha(p)
             for p in (response_path, service_path, Path(__file__))}, generated_sha256=sha(target),
         local_memory_clients=2, inverse_is_remote=True, full_transport_verified=False), indent=2) + '\n')
     print('Generated actual Parser return + shared cached-lease directory; two local memory clients')

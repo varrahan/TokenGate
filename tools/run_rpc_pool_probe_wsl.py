@@ -10,6 +10,8 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def top_source(store,probe):
     from generate_hyperram_cdc_timing_harness import ports
@@ -61,8 +63,8 @@ def main():
         for name in('grpc_pool_locked_stream_store','grpc_stream_store','memory_command_slot'):
             source=parent/'joint/rtl'/(name+'.v');assert sha(source)==g['non_mmio_parser_sha256'][name]
             path=target/'rtl'/source.name;path.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,path)
-        for name in('rtl/rpc_pool_empty_probe.v','sim/cocotb/test_rpc_pool_probe.py','tools/run_rpc_pool_probe_wsl.py','tools/generate_hyperram_cdc_timing_harness.py'):
-            path=target/name;path.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/name,path)
+        for name in('rtl/rpc_pool_empty_probe.v','sim/cocotb/test_rpc_pool_probe.py','tools/run_rpc_pool_probe_wsl.py','tools/generate_hyperram_cdc_timing_harness.py', 'tools/rtl_paths.py'):
+            path=target/name;path.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, name),path)
         (target/'sim/rpc_probe_top.sv').write_text(top_source((target/'rtl/grpc_pool_locked_stream_store.v').read_text(),(target/'rtl/rpc_pool_empty_probe.v').read_text()))
         inputs={p.relative_to(target).as_posix():sha(p)for p in target.rglob('*')if p.is_file()}
         (target/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
@@ -91,12 +93,12 @@ def main():
         print(json.dumps(dict(phase=record['phase'],exit_code=record['exit_code'])),flush=True)
         return
     from cocotb_tools.runner import get_runner
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/n)==h for n,h in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     build=root/'build/test';build.mkdir(parents=True,exist_ok=True);sys.path.insert(0,str(root/'sim/cocotb'))
     record=dict(phase='running',inputs_sha256=inputs,started_utc=datetime.now(timezone.utc).isoformat())
     try:
         runner=get_runner('icarus')
-        runner.build(sources=[root/n for n in inputs if n.endswith(('.v','.sv'))],hdl_toplevel='rpc_probe_top',build_dir=build,always=True,log_file=build/'build.log')
+        runner.build(sources=[source_path(root, n) for n in inputs if n.endswith(('.v','.sv'))],hdl_toplevel='rpc_probe_top',build_dir=build,always=True,log_file=build/'build.log')
         runner.test(hdl_toplevel='rpc_probe_top',test_module='test_rpc_pool_probe',test_dir=build,build_dir=build,results_xml=build/'results.xml',log_file=build/'simulation.log')
         xml=ET.parse(build/'results.xml');assert len(xml.findall('.//testcase'))==1 and not xml.findall('.//failure')and not xml.findall('.//error')
         accepted=json.loads((build/'acceptance.json').read_text());assert accepted['phase']=='passed'

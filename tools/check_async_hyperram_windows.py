@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name',required=True)
@@ -27,7 +29,7 @@ def main():
         names+=list(vendor)
     inputs={}
     for name in names:
-        source=vendor.get(name,args.fifo_override.resolve()if args.fifo_override and name=='rtl/cdc_packet_fifo.v'else root/name)
+        source=vendor.get(name,args.fifo_override.resolve()if args.fifo_override and name=='rtl/cdc_packet_fifo.v'else source_path(root, name))
         assert source.is_file()
         target=folder/'sources'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target)
         inputs[name]=sha(target)

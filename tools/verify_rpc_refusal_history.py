@@ -16,6 +16,8 @@ import tiktoken
 from verify_joint_hyperram_grpc_native import varint
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -44,7 +46,7 @@ def main():
         assert hashlib.sha256(text.encode()).hexdigest()==edit['before_sha256']
         if n in launch['parent_inputs_sha256']:assert edit['before_sha256']==launch['parent_inputs_sha256'][n]
     assert inputs['build/bidirectional-fixtures/memory.mem']==launch['parent_inputs_sha256']['build/bidirectional-fixtures/memory.mem']
-    test='sim/cocotb/test_rpc_refusal_history.py';assert sha(source/test)==sha(root/test)
+    test='sim/cocotb/test_rpc_refusal_history.py';assert sha(source/test)==sha(source_path(root, test))
     xml=ET.parse(folder/'results.xml');tests=xml.findall('.//testcase')
     assert len(tests)==1 and tests[0].attrib['name']=='actual_directory_binding_precedes_validated_closed_history'
     assert not xml.findall('.//failure')and not xml.findall('.//error')
@@ -135,7 +137,7 @@ def main():
         direct_test_memory_corruption_and_repair=True,production_retained_recovery_verified=False,
         native_vendor_runtime_verified=False,full_protocol_fault_matrix_verified=False,
         whole_rpc_gpu_maintenance_authority_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in folder.iterdir()if p.is_file()},
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in folder.iterdir()if p.is_file()},
         verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/rpc-refusal-history-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)

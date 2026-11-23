@@ -11,6 +11,8 @@ import re
 
 from generate_bidirectional_application import ports
 
+from rtl_paths import source_path, source_relative
+
 
 ROOT = Path(__file__).resolve().parents[1]
 MEMORY = dict(mem_valid=(1, 'output'), mem_ready=(1, 'input'),
@@ -23,8 +25,8 @@ generated = {}
 
 
 def read(name):
-    path = ROOT / 'rtl' / (name + '.v')
-    sources[path.relative_to(ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    path = source_path(ROOT, Path('rtl') / (name + '.v'))
+    sources[source_relative(path, ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
     return path.read_text()
 
 
@@ -87,9 +89,9 @@ def rename(source, old, new):
 def emit(name, source):
     source = source.replace('`default_nettype none',
         '`default_nettype none\n// Generated logical partition. Physical transport is not implemented here.', 1)
-    path = ROOT / 'rtl' / (name + '.v')
+    path = source_path(ROOT, Path('rtl') / (name + '.v'))
     path.write_text(source)
-    generated[path.relative_to(ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    generated[source_relative(path, ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def named_instance(module, params, name, connections):

@@ -6,6 +6,8 @@ import shutil
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def buffered(source):
     changes=[]
@@ -68,7 +70,7 @@ def main():
     inputs={}
     for name,digest in audit['executed_parser_sha256'].items():
         path=original/'rtl'/(name+'.v');assert sha(path)==digest
-        shutil.copy2(path,target/path.name);inputs[path.relative_to(root).as_posix()]=digest
+        shutil.copy2(path,target/path.name);inputs[source_relative(path, root).as_posix()]=digest
     path=target/'http2_axis_ingress.v';old=path.read_text()
     updated,restored,certificate=buffered(old);assert restored==old
     path.write_bytes(updated.encode())

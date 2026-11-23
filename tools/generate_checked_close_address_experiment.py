@@ -4,11 +4,13 @@ import json
 from pathlib import Path
 import shutil
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
     previous = root / 'build/experiments/registered-close-scope/rtl'
-    source = root / 'rtl/rpc_http2_response_partition.v'
+    source = source_path(root, 'rtl/rpc_http2_response_partition.v')
     text = source.read_text()
     assert text.count('checked_stream_end') == 4
     old = 'wire closed_address_good=closed_address>=streams&&{1\'b0,closed_address}+128<=checked_stream_end&&((closed_address-streams)&127)==0;'

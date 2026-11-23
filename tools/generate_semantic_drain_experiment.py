@@ -6,6 +6,8 @@ import shutil
 
 from generate_receive_pool_experiment import replace
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -15,7 +17,7 @@ def main():
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     inputs={}
     for p in previous.glob('*.v'):
-        shutil.copy2(p,target/p.name);inputs[p.relative_to(root).as_posix()]=sha(p)
+        shutil.copy2(p,target/p.name);inputs[source_relative(p, root).as_posix()]=sha(p)
     path=target/'http2_enveloped_parser_core.v'
     text=path.read_text()
     text=replace(text,

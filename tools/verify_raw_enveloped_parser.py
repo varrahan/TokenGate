@@ -15,6 +15,8 @@ import xml.etree.ElementTree as ET
 import tiktoken
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--snapshot',default='actual_raw_registered_close_scope')
@@ -37,7 +39,7 @@ def main():
     assert {'rpc_grpc_http2_return','grpc_rpc_envelope','grpc_response_headers','http2_enveloped_shutdown'}<=parser_dag.keys()
     assert 'detokenizer_engine'not in parser_dag and 'detokenizer_engine'in tokenizer_dag
     for path in[*parser_dag.values(),*tokenizer_dag.values()]:
-        n=path.relative_to(source).as_posix();assert inputs[n]==sha(root/n),'Current active RTL differs: '+n
+        n=path.relative_to(source).as_posix();assert inputs[n]==sha(source_path(root, n)),'Current active RTL differs: '+n
     names=('actual_raw_packets','actual_header_bindings','native_complete_grpc_calls','actual_forward_dma_ids',
         'actual_gpu_descriptors_accepted','actual_captured_dma_ids_returned','additional_generated_control_case_descriptors','native_wire_frames')
     assert tuple(accepted[n]for n in names)==(11,6,2,6,8,4,4,15)
@@ -90,7 +92,7 @@ def main():
     subprocess.run([sys.executable,str(replay/'tools/generate_http2_enveloped_parser.py')],check=True,capture_output=True,text=True)
     subprocess.run([sys.executable,str(replay/'tools/generate_two_fpga_harness.py'),'--enveloped-parser','--tokenizer-memory'],check=True,capture_output=True,text=True)
     for n in('rtl/http2_enveloped_shutdown.v','rtl/http2_enveloped_parser_core.v','rtl/http2_enveloped_parser_application.v','sim/cocotb_two_fpga_enveloped_top.sv'):
-        assert sha(replay/n)==inputs[n]==sha(root/n),n
+        assert sha(replay/n)==inputs[n]==sha(source_path(root, n)),n
     for n in('report.json','snapshot.json','inputs.json','acceptance.json','simulation.log','build.log','results.xml'):files[Path('reports')/n]=archive/n
     faults=None
     if args.faults:
@@ -105,7 +107,7 @@ def main():
         assert len(fault_cases)==1 and fault_cases[0].attrib['name']=='raw_shutdown_memory_failures_preserve_quarantine_and_ownership'
         assert not fault_xml.findall('.//failure')and not fault_xml.findall('.//error')
         for path in[*parser_dag.values(),*tokenizer_dag.values()]:
-            n=path.relative_to(source).as_posix();assert fault_inputs[n]==inputs[n]==sha(root/n),n
+            n=path.relative_to(source).as_posix();assert fault_inputs[n]==inputs[n]==sha(source_path(root, n)),n
         for n in('sim/cocotb_two_fpga_enveloped_top.sv','build/bidirectional-fixtures/memory.mem','build/bidirectional-fixtures/layout.txt'):
             assert fault_inputs[n]==inputs[n],n
         assert(faults['window_close_faults'],faults['directory_close_faults'],faults['peer_goaway_faults'])==(14,9,18)
@@ -130,7 +132,7 @@ def main():
         assert len(fault_cases)==1 and fault_cases[0].attrib['name']=='raw_admitted_return_metadata_faults_keep_real_ownership'
         assert not fault_xml.findall('.//failure')and not fault_xml.findall('.//error')
         for path in[*parser_dag.values(),*tokenizer_dag.values()]:
-            n=path.relative_to(source).as_posix();assert fault_inputs[n]==inputs[n]==sha(root/n),n
+            n=path.relative_to(source).as_posix();assert fault_inputs[n]==inputs[n]==sha(source_path(root, n)),n
         for n in('sim/cocotb_two_fpga_enveloped_top.sv','build/bidirectional-fixtures/memory.mem','build/bidirectional-fixtures/layout.txt'):
             assert fault_inputs[n]==inputs[n],n
         assert return_faults['actual_memory_error']==0x75 and return_faults['actual_gpu_descriptors_accepted']==21
@@ -161,7 +163,7 @@ def main():
         assert len(workload_cases)==1 and workload_cases[0].attrib['name']=='complete_prompt_corpus_uses_native_grpc_and_actual_dma'
         assert not workload_xml.findall('.//failure')and not workload_xml.findall('.//error')
         for path in[*parser_dag.values(),*tokenizer_dag.values()]:
-            n=path.relative_to(source).as_posix();assert workload_inputs[n]==inputs[n]==sha(root/n),n
+            n=path.relative_to(source).as_posix();assert workload_inputs[n]==inputs[n]==sha(source_path(root, n)),n
         for n in('sim/cocotb_two_fpga_enveloped_top.sv','build/bidirectional-fixtures/memory.mem',
             'build/bidirectional-fixtures/reference_cases.json','build/bidirectional-fixtures/response_reference.json'):
             assert workload_inputs[n]==inputs[n],n
@@ -195,7 +197,7 @@ def main():
         parser_modules=list(parser_dag),tokenizer_modules=list(tokenizer_dag),execution_inputs=len(inputs),current_active_rtl_matches=True,
         exact_raw_generation_and_harness_replayed=True,component_functional_matrix_bound=True,complete_original_model_prefix_verified=True,
         native_prompt_and_return_records_independently_reconstructed=True,
-        current_primary_differences=[n for n,h in inputs.items()if not n.startswith('native-vendor/')and(not(root/n).is_file()or sha(root/n)!=h)],
+        current_primary_differences=[n for n,h in inputs.items()if not n.startswith('native-vendor/')and(not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h)],
         full_ordinary_workload_on_this_variant_verified=False,full_raw_memory_fault_matrix_verified=False,
         full_raw_shutdown_memory_fault_matrix_verified=faults is not None,
         raw_shutdown_fault_acceptance=faults,

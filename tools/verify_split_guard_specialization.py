@@ -12,6 +12,8 @@ import re
 import shutil
 import z3
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -72,7 +74,7 @@ def main():
         method='QF_BV miter of all changed control decisions plus exact source/consumer audit',
         clock_cycle_latency_changed=False,reset_and_state_updates_changed=False,range_check_preserved=True,
         netlist_formal_equivalence_verified=False,whole_system_formal_induction_verified=False,full_system_complete=False,
-        artifacts_sha256={path.relative_to(root).as_posix():sha(path)for path in(old,new,parent_path,candidate/'report.json',Path(__file__))})
+        artifacts_sha256={source_relative(path, root).as_posix():sha(path)for path in(old,new,parent_path,candidate/'report.json',Path(__file__))})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/split-guard-specialization-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
     (evidence/'proof.smt2').write_text(smt)

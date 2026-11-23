@@ -13,6 +13,8 @@ import xml.etree.ElementTree as ET
 from generate_bidirectional_application import ports
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser()
@@ -45,7 +47,7 @@ def main():
             'http2_missing_stream_classifier','axis_cancellable_frame_arbiter'}<=parser_dag.keys()
         assert 'detokenizer_engine'not in parser_dag and 'detokenizer_engine'in tokenizer_dag
         for path in[*parser_dag.values(),*tokenizer_dag.values()]:
-            n=path.relative_to(executed).as_posix();assert sha(root/n)==inputs[n],'Active RTL differs: '+n
+            n=path.relative_to(executed).as_posix();assert sha(source_path(root, n))==inputs[n],'Active RTL differs: '+n
         public=ports((executed/'rtl/http2_shutdown_parser_application.v').read_text(),'http2_shutdown_parser_application')
         assert {n:d for d,_,n in public if n in('cancel_ready','cancel_result_valid','cancel_status')}=={
             'cancel_ready':'output','cancel_result_valid':'output','cancel_status':'output'}
@@ -60,7 +62,7 @@ def main():
         assert 'return_ack_seen&&!response_record_lease_active&&!response_result_retirement_pending'in core
         records[label]=dict(acceptance=accepted,execution_inputs=len(inputs),parser_modules=list(parser_dag),
             tokenizer_modules=list(tokenizer_dag),current_active_rtl_matches=True,
-            current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h])
+            current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h])
         for n in('report.json','snapshot.json','acceptance.json','simulation.log','build.log','results.xml'):
             files[Path(label)/'reports'/n]=archive/n
         return archive,executed,report,accepted
@@ -105,7 +107,7 @@ def main():
         'http2_shutdown_journaled_controls','http2_shutdown_peer_controls','http2_shutdown_classified_controls',
         'http2_shutdown_parser_core','http2_shutdown_parser_application')]
     generated+=['sim/cocotb_two_fpga_shutdown_top.sv','build/http2-shutdown-fixtures/cases.json']
-    for n in generated:assert sha(replay/n)==sha(source/n)==sha(root/n),n
+    for n in generated:assert sha(replay/n)==sha(source/n)==sha(source_path(root, n)),n
     native=json.loads((source/'build/http2-shutdown-fixtures/cases.json').read_text())
     assert native['phase']=='native_shutdown_references_passed'and native['token']==58040
     assert(native['grant'],native['packet_bytes'],native['record_bytes'])==(100,166,171)
@@ -125,7 +127,7 @@ def main():
     provenance=json.loads((run/'source-provenance.json').read_text());dag=closure('rpc_grpc_cancellable_return',run/'sources')
     assert len(dag)==18
     for path in dag.values():
-        n=path.relative_to(run/'sources').as_posix();assert sha(path)==provenance['files'][n]['sha256']==sha(source/n)==sha(root/n)
+        n=path.relative_to(run/'sources').as_posix();assert sha(path)==provenance['files'][n]['sha256']==sha(source/n)==sha(source_path(root, n))
         files[Path('rpc-component/sources')/n]=path
     clocks=timing(run/'routed_timing.rpt');assert clocks['setup_wns_ns']>=0 and clocks['hold_whs_ns']>=0
     assert clocks['setup_failing_endpoints']==clocks['hold_failing_endpoints']==0

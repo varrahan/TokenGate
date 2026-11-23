@@ -10,6 +10,8 @@ import tempfile
 
 from run_rpc_refusal_default_open_formal_wsl import generate,cut_children,proof_script
 
+from rtl_paths import source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--name',required=True);args=ap.parse_args()
@@ -103,7 +105,7 @@ def main():
         condition='admit_new_rpcs stays 1 from initial reset; ENABLE_CAPACITY=1 and ENABLE_STREAM_FORMAT=1',
         new_refusal_fault_behavior_verified=False,native_runtime_verified=False,native_timing_verified=False,
         whole_rpc_gpu_maintenance_authority_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in folder.rglob('*')if p.is_file()},
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in folder.rglob('*')if p.is_file()},
         verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/rpc-refusal-default-open-equivalence-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)

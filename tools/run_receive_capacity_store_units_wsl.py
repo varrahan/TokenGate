@@ -12,6 +12,8 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--name');ap.add_argument('--execute',action='store_true');args=ap.parse_args()
@@ -34,9 +36,9 @@ def main():
         for name,digest in generation['outputs_sha256'].items():
             source=root/'build/experiments/receive-capacity-store'/name;assert sha(source)==digest
             shutil.copy2(source,target/name);inputs[name]=digest
-        for name in ('sim/cocotb/test_receive_capacity_store.py','tools/run_receive_capacity_store_units_wsl.py'):
+        for name in ('sim/cocotb/test_receive_capacity_store.py','tools/run_receive_capacity_store_units_wsl.py', 'tools/rtl_paths.py'):
             destination=target/name;destination.parent.mkdir(parents=True,exist_ok=True)
-            shutil.copy2(root/name,destination);inputs[name]=sha(destination)
+            shutil.copy2(source_path(root, name),destination);inputs[name]=sha(destination)
         assert {n for n in baseline if inputs[n]!=baseline[n]}=={'rtl/http2_receive_credit_store.v'}
         (target/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
         shutil.copy2(root/'build/experiments/receive-capacity-store/generation.json',target/'generation.json')
@@ -51,7 +53,7 @@ def main():
         (archive/'snapshot.json').write_text(json.dumps(dict(name=args.name,exit_code=code,finished_utc=datetime.now(timezone.utc).isoformat()),indent=2)+'\n')
         print(json.dumps(dict(name=args.name,exit_code=code)),flush=True);raise SystemExit(code)
     assert root.parent==approved/'build/receive-capacity-store-units'
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/n)==h for n,h in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     from cocotb_tools.runner import get_runner
     sys.path.insert(0,str(root/'sim/cocotb'))
     folder=root/'build/capacity-tests';folder.mkdir(parents=True,exist_ok=False)
@@ -60,7 +62,7 @@ def main():
         for label,module,enabled in [('legacy','test_receive_credit_store',0),('capacity','test_receive_capacity_store',1)]:
             build=folder/label;build.mkdir()
             runner=get_runner('icarus')
-            runner.build(sources=[root/'rtl/http2_receive_credit_store.v',root/'rtl/memory_command_slot.v'],
+            runner.build(sources=[source_path(root, 'rtl/http2_receive_credit_store.v'),source_path(root, 'rtl/memory_command_slot.v')],
                 hdl_toplevel='http2_receive_credit_store',parameters={'ENABLE_CAPACITY':enabled},
                 build_dir=build,always=True,log_file=build/'build.log')
             runner.test(hdl_toplevel='http2_receive_credit_store',test_module=module,build_dir=build,test_dir=build,

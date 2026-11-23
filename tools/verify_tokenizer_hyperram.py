@@ -11,6 +11,8 @@ import sys
 import tempfile
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--run',required=True);parser.add_argument('--native-run');args=parser.parse_args()
@@ -23,7 +25,7 @@ def main():
     # pointer and may already describe a different hardware revision.
     fixture_path=folder/'fixture-audit/verified.json';fixture=read(fixture_path)
     assert fixture['simulation']==args.run and fixture['forward_sequences']==32 and fixture['token_ids']==11091
-    for name,digest in fixture['artifacts_sha256'].items():assert sha(root/name)==digest,name
+    for name,digest in fixture['artifacts_sha256'].items():assert sha(source_path(root, name))==digest,name
     assert sha(folder/'reference.json')==report['reference_sha256']
     assert sha(folder/'generation.json')==report['generation_sha256']
     artifacts={folder/'report.json',folder/'reference.json',folder/'generation.json',Path(__file__),fixture_path}
@@ -58,7 +60,7 @@ def main():
         assert capacity_proof['queries']==dict(reset_establishes_invariant='unsat',
             capture_and_hold_preserve_invariant='unsat',both_guards_equivalent='unsat')
         for name,digest in capacity_proof['artifacts_sha256'].items():
-            path=root/name
+            path=source_path(root, name)
             if not path.is_file()or sha(path)!=digest:path=proof_folder/name
             assert sha(path)==digest,name
         for name,digest in capacity_proof['query_sha256'].items():
@@ -90,7 +92,7 @@ def main():
     serializer=closure('utf8_serialized_chunk',folder/'sources')
     assert 'proto_json_serializer'in serializer
     for name in('utf8_serialized_chunk','proto_json_serializer'):
-        assert sha(serializer[name])==sha(root/'rtl'/(name+'.v'))
+        assert sha(serializer[name])==sha(source_path(root, Path('rtl') / (name+'.v')))
     testbench=(folder/'sources/sim/tb_tokenizer_hyperram.sv').read_text()
     assert 'tokenizer_hyperram_subsystem dut(.*);'in testbench and 'utf8_serialized_chunk #('in testbench
     assert 'test_serializer('in testbench
@@ -171,7 +173,7 @@ def main():
         for name,record in native['source_provenance']['files'].items():
             if name.startswith('rtl/'):assert report['inputs_sha256'][name]==record['sha256']
         for name,digest in native['artifacts_sha256'].items():
-            current=root/name
+            current=source_path(root, name)
             if not current.is_file()or sha(current)!=digest:
                 current=root/'build/validation/tokenizer-hyperram-native-evidence'/native['key']/name
             assert sha(current)==digest,name
@@ -182,7 +184,7 @@ def main():
             if review['native_audit_key']!=native['key']:continue
             assert review['all_remaining_warnings_classified']and review['critical_cdc_findings']==0
             for name,digest in review['artifacts_sha256'].items():
-                current=root/name
+                current=source_path(root, name)
                 if not current.is_file()or sha(current)!=digest:current=path.parent/name
                 assert sha(current)==digest,name
             cdc_review=review;artifacts.add(path)
@@ -207,7 +209,7 @@ def main():
         atomic_global_model_epoch_commit_verified=False,full_http2_transport_in_this_test_verified=False,
         pin_level_ddr_phy_verified=False,rwds_cdc_verified=False,physical_link_verified=False,pcie_verified=False,
         sustained_throughput_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     target=root/'build/validation/tokenizer-hyperram.json';target.write_text(json.dumps(result,indent=2)+'\n')
     evidence=root/'build/validation/tokenizer-hyperram-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
@@ -215,7 +217,7 @@ def main():
         if name.startswith('tools/')or(name.startswith('build/validation/')and name.count('/')==2):
             archived=evidence/name;archived.parent.mkdir(parents=True,exist_ok=True)
             if archived.exists():assert sha(archived)==digest
-            else:archived.write_bytes((root/name).read_bytes())
+            else:archived.write_bytes((source_path(root, name)).read_bytes())
     shutil.copy2(target,evidence/'verified.json');shutil.copy2(Path(__file__),evidence/Path(__file__).name)
     print(json.dumps({key:result[key]for key in('phase','key','acceptance','native_audit_key','native_timing_verified')}))
 

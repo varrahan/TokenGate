@@ -16,6 +16,8 @@ import tiktoken
 from verify_native_grpc_corpus_reference import varint
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser=argparse.ArgumentParser()
@@ -48,7 +50,7 @@ def main():
         assert {'http2_receive_flow_controller','http2_keyed_receive_credit_store','http2_receive_credit_store'}<=dag.keys()
         assert 'detokenizer_engine'not in dag and 'detokenizer_engine'in tokenizer
         for p in [*dag.values(),*tokenizer.values()]:
-            n=p.relative_to(source).as_posix();assert inputs[n]==overrides.get(n,sha(root/n)),n
+            n=p.relative_to(source).as_posix();assert inputs[n]==overrides.get(n,sha(source_path(root, n))),n
         assert (accepted['parser_memory_clients'],accepted['tokenizer_memory_clients'])==(18,9)
         assert accepted['complete_model_prefix_immutable'] and accepted['full_system_complete']is False
         fixture=source/'build/bidirectional-fixtures';layout=list(map(int,(fixture/'layout.txt').read_text().split()))
@@ -110,10 +112,10 @@ def main():
         'tools/generate_receive_integration_experiment.py','tools/generate_receive_commit_test.py',
         'tools/generate_two_fpga_application.py','tools/generate_bidirectional_application.py','rtl/axis_frame_arbiter.v',
         'sim/cocotb_two_fpga_enveloped_top.sv','sim/cocotb/test_raw_grpc_enveloped.py','sim/cocotb/test_raw_receive_flow.py'}
-    to_copy|={p.relative_to(root).as_posix()for p in(root/'build/experiments/registered-envelope-scope/rtl').glob('*.v')}
+    to_copy|={source_relative(p, root).as_posix()for p in(root/'build/experiments/registered-envelope-scope/rtl').glob('*.v')}
     replay_inputs={}
     for name in sorted(to_copy):
-        original=root/name
+        original=source_path(root, name)
         if name in generation['input_sha256']:assert sha(original)==generation['input_sha256'][name],name
         target=replay/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(original,target);replay_inputs[name]=sha(target)
     subprocess.run([sys.executable,str(replay/'tools/generate_receive_integration_experiment.py')],check=True,capture_output=True,text=True)
@@ -138,7 +140,7 @@ def main():
         assert sha(output)==sha(frozen/'timing_harness.v')
         exceptions=[s.strip()for s in(frozen/'scripts/implement_registered_subsystem.tcl').read_text().splitlines()if s.strip().startswith('set_false_path')]
         assert exceptions==['set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']
-        log=root/('build/'+args.native_run+'-implementation.log');log_bytes=log.read_bytes();log_text=log_bytes.decode()
+        log=source_path(root, 'build/'+args.native_run+'-implementation.log');log_bytes=log.read_bytes();log_text=log_bytes.decode()
         captured=root/'build/validation/native-log-snapshots'/hashlib.sha256(log_bytes).hexdigest();captured.parent.mkdir(parents=True,exist_ok=True)
         if not captured.exists():captured.write_bytes(log_bytes)
         native.update(phase='native_sources_and_all_port_neighbors_verified',captured_log=str(captured),source_provenance_sha256=sha(folder/'source-provenance.json'))

@@ -5,6 +5,8 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY, named_instance
 
+from rtl_paths import source_path
+
 
 def main():
     arguments = argparse.ArgumentParser()
@@ -21,7 +23,7 @@ def main():
     if args.shutdown_parser or args.enveloped_parser:args.classified_parser=True
     root = Path(__file__).resolve().parents[1]
     def interface(name):
-        return ports((root / 'rtl' / (name + '.v')).read_text(), name)
+        return ports((source_path(root, Path('rtl') / (name + '.v'))).read_text(), name)
     original = interface('http2_bidirectional_application')
     assert sum((args.framed_parser,args.controlled_parser,args.initialized_parser,args.journaled_parser,args.peer_parser,args.classified_parser))<=1
     parser_top='http2_classified_parser_application' if args.classified_parser else 'http2_peer_parser_application' if args.peer_parser else 'http2_journaled_parser_application' if args.journaled_parser else 'http2_initialized_parser_application' if args.initialized_parser else 'http2_controlled_parser_application' if args.controlled_parser else 'http2_framed_parser_application' if args.framed_parser else 'http2_parser_fpga_application'
@@ -106,7 +108,7 @@ def main():
         f'else if(fault_client>=0&&fault_client<{global_count}&&mem_rsp_valid[fault_client]&&mem_rsp_ready[fault_client])begin',
         'if(!fault_injected&&response_index==fault_target)fault_injected<=1;response_index<=response_index+1;',
         'end end', 'endmodule', '`default_nettype wire', ''])
-    output = root / ('sim/cocotb_two_fpga_classified_top.sv' if args.classified_parser else 'sim/cocotb_two_fpga_peer_top.sv' if args.peer_parser else 'sim/cocotb_two_fpga_journaled_top.sv' if args.journaled_parser else 'sim/cocotb_two_fpga_initialized_top.sv' if args.initialized_parser else 'sim/cocotb_two_fpga_controlled_top.sv' if args.controlled_parser else 'sim/cocotb_two_fpga_framed_top.sv' if args.framed_parser else 'sim/cocotb_two_fpga_memory_top.sv' if args.tokenizer_memory else 'sim/cocotb_two_fpga_application_top.sv')
+    output = source_path(root, 'sim/cocotb_two_fpga_classified_top.sv' if args.classified_parser else 'sim/cocotb_two_fpga_peer_top.sv' if args.peer_parser else 'sim/cocotb_two_fpga_journaled_top.sv' if args.journaled_parser else 'sim/cocotb_two_fpga_initialized_top.sv' if args.initialized_parser else 'sim/cocotb_two_fpga_controlled_top.sv' if args.controlled_parser else 'sim/cocotb_two_fpga_framed_top.sv' if args.framed_parser else 'sim/cocotb_two_fpga_memory_top.sv' if args.tokenizer_memory else 'sim/cocotb_two_fpga_application_top.sv')
     if args.shutdown_parser:output=root/'sim/cocotb_two_fpga_shutdown_top.sv'
     if args.enveloped_parser:output=root/'sim/cocotb_two_fpga_enveloped_top.sv'
     output.write_text('\n'.join(lines))

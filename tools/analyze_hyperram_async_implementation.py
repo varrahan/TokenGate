@@ -13,6 +13,8 @@ import tempfile
 import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--shared-reset',action='store_true');args=parser.parse_args()
@@ -36,9 +38,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='async-timing-harness-replay-')as temp:
         replay=Path(temp)
         for relative in ('tools/generate_hyperram_async_timing_harness.py','tools/generate_hyperram_cdc_timing_harness.py',
-                         'rtl/axi_hyperram_async_controller.v'):
+                         'rtl/axi_hyperram_async_controller.v', 'tools/rtl_paths.py'):
             target=replay/relative;target.parent.mkdir(parents=True,exist_ok=True)
-            source=folder/'sources'/relative if relative.startswith('rtl/')else root/relative
+            source=folder/'sources'/relative if relative.startswith('rtl/')else source_path(root, relative)
             shutil.copy2(source,target);artifacts.add(source)
         subprocess.run([sys.executable,str(replay/'tools/generate_hyperram_async_timing_harness.py')],check=True,capture_output=True)
         assert sha(replay/'build/hyperram-async/timing_harness.v')==sha(folder/'sources/timing_harness.v')
@@ -110,7 +112,7 @@ def main():
         vendor_bus_skew_met=all(row['slack_ns']>=0 for row in skew_summary),fully_routed_nets=routed,routing_errors=0,
         cdc_signoff_verified=False,primary_fifo_modified=False,package_timing_verified=False,
         pin_level_ddr_phy_verified=False,rwds_cdc_verified=False,tokenizer_instantiation_verified=False,
-        full_system_complete=False,artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in sorted(artifacts)})
+        full_system_complete=False,artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     target=root/'build/validation'/('hyperram-shared-reset-implementation.json'if args.shared_reset else'hyperram-async-implementation.json');target.write_text(json.dumps(result,indent=2)+'\n')
     evidence=root/'build/validation/hyperram-async-implementation-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)

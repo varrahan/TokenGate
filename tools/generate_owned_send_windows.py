@@ -6,10 +6,12 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    directory_path=root/'rtl/grpc_pool_locked_stream_store.v';window_path=root/'rtl/http2_send_window_store.v'
+    directory_path=source_path(root, 'rtl/grpc_pool_locked_stream_store.v');window_path=source_path(root, 'rtl/http2_send_window_store.v')
     directory=ports(directory_path.read_text(),'grpc_pool_locked_stream_store')
     windows=ports(window_path.read_text(),'http2_send_window_store')
     pool_names={n for _,_,n in directory if n.startswith(('pool_lock_','pool_unlock_'))}
@@ -70,10 +72,10 @@ def main():
         '        LOCK_ERROR:if(window_rsp_ready)state<=IDLE;',
         '        UNLOCK:if(unlock_ready)state<=IDLE;',
         '        default:state<=IDLE;', '    endcase','end','endmodule','`default_nettype wire','']
-    target=root/'rtl/http2_owned_send_windows.v';target.write_text('\n'.join(lines))
+    target=source_path(root, 'rtl/http2_owned_send_windows.v');target.write_text('\n'.join(lines))
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/owned-send-windows-generation.json').write_text(json.dumps(dict(
-        phase='generated_actual_pool_owned_windows',inputs_sha256={p.relative_to(root).as_posix():sha(p)for p in(directory_path,window_path,Path(__file__))},
+        phase='generated_actual_pool_owned_windows',inputs_sha256={source_relative(p, root).as_posix():sha(p)for p in(directory_path,window_path,Path(__file__))},
         generated_sha256=sha(target),memory_clients=2,authority_from_actual_pool_lock=True,
         actual_network_control_integrated=False,full_system_complete=False),indent=2)+'\n')
     print('Generated actual directory/pool exclusion + durable window engine; two memory clients, internally derived authority')

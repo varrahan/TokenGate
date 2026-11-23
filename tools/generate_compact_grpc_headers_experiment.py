@@ -3,9 +3,11 @@ import hashlib
 import json
 from pathlib import Path
 
+from rtl_paths import source_path
+
 
 def main():
-    root=Path(__file__).resolve().parents[1];original=root/'rtl/grpc_response_headers.v';text=original.read_text()
+    root=Path(__file__).resolve().parents[1];original=source_path(root, 'rtl/grpc_response_headers.v');text=original.read_text()
     start=text.index('    always @*begin');end=text.index('    always @(posedge clk)begin',start)
     constants=[]
     for name,suffix in(('GRPC',b''),('PROTO',b'+proto'),('JSON',b'+json')):

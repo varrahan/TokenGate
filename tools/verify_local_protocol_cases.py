@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -88,10 +90,10 @@ def main():
         'tools/generate_receive_pool_experiment.py','tools/generate_two_fpga_application.py','tools/generate_bidirectional_application.py'}
     assert generation['generator_sha256'] == sha(root/'tools/generate_local_protocol_cases.py')
     for n in paths:
-        assert n not in generation['input_sha256'] or sha(root/n) == generation['input_sha256'][n]
+        assert n not in generation['input_sha256'] or sha(source_path(root, n)) == generation['input_sha256'][n]
         destination = replay/n
         destination.parent.mkdir(parents=True,exist_ok=True)
-        shutil.copy2(root/n,destination)
+        shutil.copy2(source_path(root, n),destination)
     subprocess.run([sys.executable,str(replay/'tools/generate_local_protocol_cases.py')],check=True,capture_output=True,text=True)
     replayed = json.loads((replay/'build/experiments/local-protocol-cases/generation.json').read_text())
     assert replayed == generation

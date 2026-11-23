@@ -13,6 +13,8 @@ from generate_bidirectional_application import ports
 from generate_two_fpga_application import (MEMORY, add_ports, header_end, instance,
     named_instance, opposite, propagate, rename)
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser=argparse.ArgumentParser()
@@ -23,14 +25,14 @@ def main():
     outputs = {}
 
     def read(name):
-        path = root / ('rtl/' + name + '.v')
-        inputs[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+        path = source_path(root, 'rtl/' + name + '.v')
+        inputs[source_relative(path, root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
         return path.read_text()
 
     def emit(name, source):
-        path = root / ('rtl/' + name + '.v')
+        path = source_path(root, 'rtl/' + name + '.v')
         path.write_text(source)
-        outputs[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+        outputs[source_relative(path, root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
 
     transport_name='http2_controlled_parser_transport' if args.control_fork else 'http2_shared_directory_transport'
     core_name='http2_controlled_parser_core' if args.control_fork else 'http2_framed_parser_core'
@@ -224,7 +226,7 @@ end
         generator_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         parser_memory_clients=13, original_client_mapping=kept,control_fork_integrated=args.control_fork,
         whole_rpc_gpu_image_leases_verified=False, credit_ledger_verified=False, full_system_complete=False)
-    (root/('build/validation/http2-controlled-parser-generation.json' if args.control_fork else 'build/validation/http2-framed-parser-generation.json')).write_text(json.dumps(result,indent=2)+'\n')
+    (source_path(root, 'build/validation/http2-controlled-parser-generation.json' if args.control_fork else 'build/validation/http2-framed-parser-generation.json')).write_text(json.dumps(result,indent=2)+'\n')
     print('Generated raw framed Parser with one directory authority, thirteen memory clients and independent RX scheduling')
 
 

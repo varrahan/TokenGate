@@ -10,6 +10,8 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -21,7 +23,7 @@ def main():
         assert state['exit_code']==0 and report['phase']==accepted['phase']=='passed'
         assert report['input_sha256']==inputs and len(inputs)==9
         assert report['acceptance_sha256']==sha(archive/'acceptance.json')
-        for name,digest in inputs.items():assert sha(archive/'execution-sources'/name)==sha(root/name)==digest,name
+        for name,digest in inputs.items():assert sha(archive/'execution-sources'/name)==sha(source_path(root, name))==digest,name
         xml=ET.parse(archive/'results.xml');assert len(xml.findall('.//testcase'))==1
         assert not xml.findall('.//failure')and not xml.findall('.//error')
         assert xml.find('.//testcase').attrib['name']=='startup_checks_device_before_releasing_axi'
@@ -58,12 +60,12 @@ def main():
     generation=json.loads((root/'build/hyperram-startup/generation.json').read_text())
     assert generation['generator_sha256']==sha(root/'tools/generate_axi_hyperram_controller.py')
     assert generation['port_parser_sha256']==sha(root/'tools/generate_bidirectional_application.py')
-    assert generation['output_sha256']==sha(root/'rtl/axi_hyperram_controller.v')
-    assert all(sha(root/p)==h for p,h in generation['input_sha256'].items())
+    assert generation['output_sha256']==sha(source_path(root, 'rtl/axi_hyperram_controller.v'))
+    assert all(sha(source_path(root, p))==h for p,h in generation['input_sha256'].items())
     with tempfile.TemporaryDirectory(prefix='hyperram-startup-replay-')as temp:
         replay=Path(temp)
-        for name in list(generation['input_sha256'])+['tools/generate_axi_hyperram_controller.py','tools/generate_bidirectional_application.py']:
-            p=replay/name;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/name,p)
+        for name in list(generation['input_sha256'])+['tools/generate_axi_hyperram_controller.py','tools/generate_bidirectional_application.py', 'tools/rtl_paths.py']:
+            p=replay/name;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, name),p)
         subprocess.run([sys.executable,str(replay/'tools/generate_axi_hyperram_controller.py')],check=True,capture_output=True,text=True)
         assert json.loads((replay/'build/hyperram-startup/generation.json').read_text())==generation
     log=root/'build/validation/hyperram-startup-structural.log'
@@ -77,7 +79,7 @@ def main():
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/hyperram-startup-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
     (evidence/'verified.json').write_text(json.dumps(result,indent=2)+'\n')
-    for p in(Path(__file__),log,root/'rtl/hyperram_startup.v',root/'rtl/axi_hyperram_controller.v',
+    for p in(Path(__file__),log,source_path(root, 'rtl/hyperram_startup.v'),source_path(root, 'rtl/axi_hyperram_controller.v'),
         root/'sim/cocotb/test_hyperram_startup.py',root/'tools/generate_axi_hyperram_controller.py'):shutil.copy2(p,evidence/p.name)
     result['evidence_folder']=str(evidence)
     (root/'build/validation/hyperram-startup.json').write_text(json.dumps(result,indent=2)+'\n')

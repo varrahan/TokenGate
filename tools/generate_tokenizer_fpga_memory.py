@@ -6,11 +6,13 @@ from pathlib import Path
 from generate_bidirectional_application import ports
 from generate_two_fpga_application import MEMORY, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    source = root / 'rtl/tokenizer_fpga_application.v'
-    fabric_source = root / 'rtl/external_memory_fabric.v'
+    source = source_path(root, 'rtl/tokenizer_fpga_application.v')
+    fabric_source = source_path(root, 'rtl/external_memory_fabric.v')
     app = ports(source.read_text(), 'tokenizer_fpga_application')
     fabric = ports(fabric_source.read_text(), 'external_memory_fabric')
     public = [(d, w, n) for d, w, n in app if n not in MEMORY]
@@ -40,12 +42,12 @@ def main():
     lines.append(named_instance('external_memory_fabric',
         '.CLIENTS(9),.ADDR_WIDTH(MEMORY_ADDR_WIDTH),.CACHE_LOG_LINES(CACHE_LOG_LINES)', 'fabric', connections))
     lines += ['endmodule', '`default_nettype wire', '']
-    output = root / 'rtl/tokenizer_fpga_memory_subsystem.v'
+    output = source_path(root, 'rtl/tokenizer_fpga_memory_subsystem.v')
     output.write_text('\n'.join(lines))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     result = dict(phase='generated_tokenizer_with_local_memory_fabric', top='tokenizer_fpga_memory_subsystem',
         memory_clients=9, external_axi_data_width=64, cache_log_lines_default=6,
-        source_sha256={p.relative_to(root).as_posix(): sha(p) for p in (source, fabric_source, Path(__file__))},
+        source_sha256={source_relative(p, root).as_posix(): sha(p) for p in (source, fabric_source, Path(__file__))},
         generated_sha256=sha(output), physical_memory_controller_integrated=False,
         distributed_image_leases_integrated=False, full_system_complete=False)
     (root / 'build/validation/tokenizer-fpga-memory-generation.json').write_text(json.dumps(result, indent=2) + '\n')

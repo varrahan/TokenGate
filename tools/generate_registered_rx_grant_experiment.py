@@ -4,10 +4,12 @@ import json
 from pathlib import Path
 import shutil
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    original = root / 'rtl/http2_enveloped_parser_core.v'
+    original = source_path(root, 'rtl/http2_enveloped_parser_core.v')
     text = original.read_text()
     def replace(old, new):
         nonlocal text

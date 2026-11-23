@@ -7,6 +7,8 @@ import shutil
 from generate_receive_pool_experiment import replace
 from generate_two_fpga_application import instance,named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -14,11 +16,11 @@ def main():
     folder=root/'build/experiments/receive-format';target=folder/'rtl';target.mkdir(parents=True,exist_ok=True)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();inputs={}
     for p in previous.glob('*.v'):
-        inputs[p.relative_to(root).as_posix()]=sha(p);shutil.copy2(p,target/p.name)
+        inputs[source_relative(p, root).as_posix()]=sha(p);shutil.copy2(p,target/p.name)
     def read(name):
         p=previous/(name+'.v')
-        if not p.exists():p=root/'rtl'/(name+'.v')
-        inputs[p.relative_to(root).as_posix()]=sha(p);return p.read_text()
+        if not p.exists():p=source_path(root, Path('rtl') / (name+'.v'))
+        inputs[source_relative(p, root).as_posix()]=sha(p);return p.read_text()
     name='http2_receive_credit_store';text=read(name)
     text=replace(text,'    parameter integer USER_WIDTH=16,MEMORY_ADDR_WIDTH=23',
         '    parameter integer ENABLE_STREAM_FORMAT=0,USER_WIDTH=16,MEMORY_ADDR_WIDTH=23')

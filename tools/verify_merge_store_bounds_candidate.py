@@ -9,6 +9,8 @@ import shutil
 
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -23,7 +25,7 @@ def main():
     assert metadata['baseline_sha256'] == sha(baseline)
     assert metadata['candidate_sha256'] == sha(candidate)
     assert metadata['generator_sha256'] == sha(root / 'tools/prepare_merge_store_bounds_candidate.py')
-    current = sha(root / 'rtl/bpe_external_merge_unit.v')
+    current = sha(source_path(root, 'rtl/bpe_external_merge_unit.v'))
     assert current in (sha(baseline), sha(candidate)), 'Primary RTL has an unrelated change'
     archive = root / 'build/validation/merge-store-bounds-candidate-inputs'
     archive_record = json.loads((archive / 'archive.json').read_text())
@@ -67,10 +69,10 @@ def main():
     dependencies = closure('tokenizer_fpga_application')
     assert len(dependencies) == 18
     for source in set(dependencies.values()):
-        relative = source.relative_to(root)
+        relative = source_relative(source, root)
         expected = candidate if relative.as_posix() == 'rtl/bpe_external_merge_unit.v' else source
         assert sha(expected) == sha(native / 'sources' / relative) == provenance['files'][relative.as_posix()]['sha256']
-    log_file = root / f'build/{args.native_run}-implementation.log'
+    log_file = source_path(root, f'build/{args.native_run}-implementation.log')
     log = log_file.read_text()
     assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=tokenizer_fpga_application PART=xcsu35p-sbvb625-2-e' in log
     assert re.search(r'# of nets with routing errors\.+\s*:\s*0\s*:', (native / 'route_status.rpt').read_text())
@@ -82,13 +84,13 @@ def main():
         files[Path('native') / name] = native / name
     files[Path('native/implementation.log')] = log_file
     for path in set(dependencies.values()):
-        files[Path('native/sources') / path.relative_to(root)] = native / 'sources' / path.relative_to(root)
+        files[Path('native/sources') / source_relative(path, root)] = native / 'sources' / source_relative(path, root)
     for name in ('candidate.json', 'bpe_external_merge_unit.v', 'baseline-bpe_external_merge_unit.v'):
         files[Path('candidate') / name] = candidate_folder / name
     for name in ('tools/verify_merge_store_bounds_candidate.py', 'tools/prepare_merge_store_bounds_candidate.py',
                  'scripts/prove_merge_store_bounds.py', 'scripts/prove_merge_reset_base.py', 'scripts/run_isolated_merge_candidate.py',
-                 'scripts/collect_merge_store_bounds_candidate.py'):
-        files[Path('verification') / name] = root / name
+                 'scripts/collect_merge_store_bounds_candidate.py', 'tools/rtl_paths.py'):
+        files[Path('verification') / name] = source_path(root, name)
     key = hashlib.sha256((sha(archive / 'archive.json') + sha(native / 'source-provenance.json') + sha(Path(__file__))).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/merge-store-bounds-candidate-evidence' / key
     for name, source in files.items():

@@ -7,6 +7,8 @@ from pathlib import Path
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -35,14 +37,14 @@ def main():
     native=root/'build/implementation/xcsu35p-sbvb625-2-e'/native_name
     rtl_count=0
     for name,digest in report['source_sha256'].items():
-        assert sha(root/name)==digest,('Current source differs',name)
+        assert sha(source_path(root, name))==digest,('Current source differs',name)
         if name.startswith('rtl/'):
             assert sha(native/'sources'/name)==digest,('Native RTL differs',name)
             rtl_count+=1
     assert rtl_count>50
     assert set(oracle['fixture_sha256'])=={Path(name).name for name in report['fixture_sha256']}
     for name,digest in report['fixture_sha256'].items():
-        assert sha(root/name)==digest,('Current fixture differs',name)
+        assert sha(source_path(root, name))==digest,('Current fixture differs',name)
         assert oracle['fixture_sha256'][Path(name).name]==digest,('Native/simulation fixture differs',name)
     assert(acceptance['packets'],acceptance['headers'],acceptance['messages'],acceptance['token_ids'],
            acceptance['packet_aborts'],acceptance['rejected'],acceptance['connection_opens'],acceptance['memory_faults'])==(38,21,16,2828,4,3,7,2)
@@ -58,7 +60,7 @@ def main():
     for name,digest in {**report['source_sha256'],**report['fixture_sha256']}.items():
         target=evidence/'inputs'/name;target.parent.mkdir(parents=True,exist_ok=True)
         if target.exists():assert sha(target)==digest,('Evidence directory belongs to another revision',name)
-        else:shutil.copy2(root/name,target)
+        else:shutil.copy2(source_path(root, name),target)
     for name in('report.json','acceptance.json','results.xml','simulation.log','build.log'):
         target=evidence/'reports'/name;target.parent.mkdir(parents=True,exist_ok=True)
         if target.exists():assert sha(target)==sha(reports/name),('Evidence already differs',name)

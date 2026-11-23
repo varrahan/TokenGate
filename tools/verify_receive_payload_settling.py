@@ -11,6 +11,8 @@ from generate_receive_payload_pipeline import MODULE,NAME,edits
 from verify_registered_frame_select import source_gate as parent_gate
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def read(p):return json.loads(p.read_text())
@@ -128,7 +130,7 @@ def main():
         exact_non_mmio_parser_modules=78,exact_schema_parser_modules=79,exact_native_tokenizer_modules=31,
         earlier_unsuccessful_proof_attempts=negatives,actual_candidate_runtime_verified=False,
         retained_owner_recovery_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in folder.iterdir()if p.is_file()},verifier_sha256=sha(Path(__file__)))
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in folder.iterdir()if p.is_file()},verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/receive-payload-settling-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)
     for name in('verify_receive_payload_settling.py','run_receive_payload_settling_wsl.py','run_receive_payload_pipeline_compositional_wsl.py','run_receive_payload_pipeline_formal_wsl.py','generate_receive_payload_pipeline.py'):

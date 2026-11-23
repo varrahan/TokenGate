@@ -16,6 +16,8 @@ import tiktoken
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -194,7 +196,7 @@ def main():
         portable_memory_backend=True, native_vendor_runtime_verified=False, whole_system_retained_reset_verified=False,
         automatic_directory_retirement_verified=False, full_protocol_fault_matrix_verified=False,
         native_timing_verified=False, physical_interfaces_verified=False, full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix(): sha(p) for p in [launch_path, *[p for p in archive.iterdir() if p.is_file()]]},
+        artifacts_sha256={source_relative(p, root).as_posix(): sha(p) for p in [launch_path, *[p for p in archive.iterdir() if p.is_file()]]},
         verifier_sha256=sha(Path(__file__)))
     result['key'] = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/open-rpc-reclaim-faults-evidence' / result['key']

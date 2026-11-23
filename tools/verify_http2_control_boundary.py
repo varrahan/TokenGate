@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -28,7 +30,7 @@ def main():
             files[Path(label)/'execution'/name]=archive/'execution-sources'/name
         for name in('inputs.json','report.json','snapshot.json','simulation.log','build.log'):
             files[Path(label)/'reports'/name]=archive/name
-        reports[label]=dict(inputs=inputs,record=report,current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h])
+        reports[label]=dict(inputs=inputs,record=report,current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h])
     accepted=json.loads((isolated/'acceptance.json').read_text())
     xml=ET.parse(isolated/'results.xml')
     assert len(xml.findall('.//testcase'))==1 and not xml.findall('.//failure') and not xml.findall('.//error')
@@ -58,7 +60,7 @@ def main():
     # Recompile the frozen native generators independently and compare the
     # complete wire/semantic/header corpus, rather than trusting its manifest.
     replay_key=hashlib.sha256(''.join(reports['raw_hpack']['inputs'][n]for n in
-        ('tools/generate_http2_hpack_vectors.py','tools/generate_http2_transport_vectors.py','tools/generate_http2_frame_vectors.py')).encode()).hexdigest()[:16]
+        ('tools/generate_http2_hpack_vectors.py','tools/generate_http2_transport_vectors.py','tools/generate_http2_frame_vectors.py', 'tools/rtl_paths.py')).encode()).hexdigest()[:16]
     replay=root/'build/validation/http2-control-reference-replay'/replay_key
     if not(replay/'vectors.txt').exists():
         subprocess.run([sys.executable,str(executed/'tools/generate_http2_hpack_vectors.py'),'--output',str(replay)],check=True)

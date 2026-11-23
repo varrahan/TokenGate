@@ -12,6 +12,8 @@ import shutil
 from generate_hyperram_cdc_timing_harness import ports
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 MANUAL = {'cfg_schema_valid', 'cfg_schema_ready', 'cfg_schema_index', 'cfg_schema_key',
     'cfg_schema_key_length', 'cfg_schema_json_enable', 'cfg_schema_field', 'cfg_schema_proto_enable'}
@@ -72,7 +74,7 @@ def main():
     assert len(dependencies) == 76
     for path in dependencies.values():
         assert sha(path) == report['inputs_sha256'][path.relative_to(native).as_posix()]
-    mmio = root/'rtl/parser_schema_mmio.v'
+    mmio = source_path(root, 'rtl/parser_schema_mmio.v')
     component = read(root/'build/validation/parser-schema-mmio.json')
     assert component['key'] == '43a8b7a78f950e37'
     assert sha(mmio) == component['compiled_rtl_sha256']['parser_schema_mmio']
@@ -91,7 +93,7 @@ def main():
     assert set(dependencies_new) == (set(dependencies)-{'http2_enveloped_parser_application'}) | {'http2_schema_mmio_application','parser_schema_mmio'}
     for name,path in dependencies_new.items():
         if name not in ('http2_schema_mmio_application','parser_schema_mmio'):assert sha(path) == sha(dependencies[name])
-    published = root/'rtl'/output.name
+    published = source_path(root, Path('rtl') / (output.name))
     if published.exists():assert published.read_bytes() == output.read_bytes(), 'Preserve a different existing implementation'
     else:shutil.copy2(output,published)
     shutil.copy2(Path(__file__),target/Path(__file__).name)

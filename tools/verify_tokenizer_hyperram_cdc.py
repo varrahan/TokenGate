@@ -9,6 +9,8 @@ import re
 import shutil
 from generate_hyperram_cdc_timing_harness import ports
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--run',required=True);args=parser.parse_args()
@@ -19,7 +21,7 @@ def main():
     assert candidates,'Native findings must be audited first'
     native_path,native=max(candidates,key=lambda item:item[1]['verified_utc'])
     for name,digest in native['artifacts_sha256'].items():
-        path=root/name
+        path=source_path(root, name)
         if not path.exists()or sha(path)!=digest:path=native_path.parent/name
         assert sha(path)==digest,name
     assert native['vendor_bus_skew_met']and not native['critical_cdc_findings']
@@ -81,7 +83,7 @@ def main():
         custom_waivers_added=0,custom_internal_false_paths_added=0,native_timing_verified=native['timing_met'],
         analog_metastability_verified=False,formal_cdc_signoff_verified=False,package_timing_verified=False,
         pin_level_ddr_phy_verified=False,rwds_cdc_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in(native_path,folder/'routed_cdc.rpt',
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in(native_path,folder/'routed_cdc.rpt',
             folder/'routed_bus_skew.rpt',folder/'routed_exceptions.rpt',folder/'routed_drc.rpt',
             folder/'sources/timing_harness.v',folder/'sources/rtl/tokenizer_hyperram_subsystem.v',Path(__file__))})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]

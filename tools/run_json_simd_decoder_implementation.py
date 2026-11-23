@@ -10,6 +10,8 @@ import subprocess
 import sys
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name',required=True);args=parser.parse_args()
@@ -28,8 +30,8 @@ def main():
     folder.mkdir(parents=True,exist_ok=False);inputs={}
     for path in dependencies.values():
         target=folder/'rtl'/path.name;target.parent.mkdir(exist_ok=True);shutil.copy2(path,target);inputs['rtl/'+path.name]=sha(target)
-    for name in('scripts/implement_registered_subsystem.tcl','tools/generate_parser_timing_harness.py','constraints/parser.xdc'):
-        path=root/name;target=folder/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target);inputs[name]=sha(target)
+    for name in('scripts/implement_registered_subsystem.tcl','tools/generate_parser_timing_harness.py','constraints/parser.xdc', 'tools/rtl_paths.py', 'scripts/rtl_sources.tcl'):
+        path=source_path(root, name);target=folder/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target);inputs[name]=sha(target)
     shutil.copy2(tested/'report.json',folder/'functional-report.json');shutil.copy2(Path(__file__),folder/Path(__file__).name)
     harness=root/'build'/(args.name+'-timing-harness.v')
     subprocess.run([sys.executable,str(folder/'tools/generate_parser_timing_harness.py'),'--source',str(folder/'rtl'/(top+'.v')),

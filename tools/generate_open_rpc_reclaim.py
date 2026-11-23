@@ -6,6 +6,8 @@ import shutil
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 CORE_DECLARATIONS = '''
 // Private payload reclamation; these are never host authority inputs.
@@ -135,7 +137,7 @@ def main():
     parent = read(root / 'build/validation/frame-owned-quiet-corpus.json')
     unit = read(root / 'build/validation/payload-reclaimer-units.json')
     assert parent['key'] == 'b89b9aea0dd403cb' and unit['key'] == 'f16cf89cd799c1fb'
-    assert sha(root / 'rtl/grpc_payload_reclaimer.v') == unit['actual_reclaimer_rtl_sha256']
+    assert sha(source_path(root, 'rtl/grpc_payload_reclaimer.v')) == unit['actual_reclaimer_rtl_sha256']
     folder = root / 'build/experiments/open-rpc-reclaim'
     folder.mkdir(parents=True, exist_ok=False)
     texts, originals, newlines, certificates = {}, {}, {}, {}
@@ -253,7 +255,7 @@ def main():
         (output / (module + '.v')).write_bytes(raw)
         if raw != originals[module]:
             changed.append(module)
-    shutil.copy2(root / 'rtl/grpc_payload_reclaimer.v', output / 'grpc_payload_reclaimer.v')
+    shutil.copy2(source_path(root, 'rtl/grpc_payload_reclaimer.v'), output / 'grpc_payload_reclaimer.v')
     modules = closure('http2_enveloped_parser_application', folder)
     assert len(modules) == 77
     result = dict(phase='open_rpc_reclaim_integration_generated', parent_corpus_audit_key=parent['key'],

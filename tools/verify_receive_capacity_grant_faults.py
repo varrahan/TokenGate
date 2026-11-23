@@ -15,6 +15,8 @@ from hyperframe.frame import Frame
 import tiktoken
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--name',required=True)
@@ -122,7 +124,7 @@ def main():
         full_actual_ingress_and_wire_independently_replayed=True,explicit_host_close_refund_verified=True,
         large_message_deadlock_fixed=False,native_vendor_runtime_verified=False,whole_system_retained_reset_verified=False,
         full_protocol_fault_matrix_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in[launch_path,*[p for p in archive.iterdir()if p.is_file()]]},verifier_sha256=sha(Path(__file__)))
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in[launch_path,*[p for p in archive.iterdir()if p.is_file()]]},verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/receive-capacity-grant-faults-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=False)
     shutil.copy2(Path(__file__),evidence/Path(__file__).name)

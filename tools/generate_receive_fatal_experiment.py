@@ -7,6 +7,8 @@ import shutil
 from generate_receive_pool_experiment import replace
 from generate_two_fpga_application import add_ports, instance, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -18,13 +20,13 @@ def main():
     inputs = {}
     for p in (previous / 'rtl').glob('*.v'):
         shutil.copy2(p, target / p.name)
-        inputs[p.relative_to(root).as_posix()] = sha(p)
+        inputs[source_relative(p, root).as_posix()] = sha(p)
 
     def read(name):
         p = previous / 'rtl' / (name + '.v')
         if not p.exists():
-            p = root / 'rtl' / (name + '.v')
-        inputs[p.relative_to(root).as_posix()] = sha(p)
+            p = source_path(root, Path('rtl') / (name + '.v'))
+        inputs[source_relative(p, root).as_posix()] = sha(p)
         return p.read_text()
 
     def emit(name, text):
@@ -109,7 +111,7 @@ end
     for p in (previous / 'sim').glob('*'):
         if p.is_file():
             shutil.copy2(p, sim / p.name)
-            inputs[p.relative_to(root).as_posix()] = sha(p)
+            inputs[source_relative(p, root).as_posix()] = sha(p)
     report = dict(phase='actual_closing_connection_retirement_generated', input_sha256=inputs,
         generator_sha256=sha(Path(__file__)), generated_sha256={p.name: sha(p) for p in target.glob('*.v')},
         sim_sha256={p.name: sha(p) for p in sim.glob('*') if p.is_file()},

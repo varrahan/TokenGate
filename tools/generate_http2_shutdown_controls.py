@@ -7,13 +7,15 @@ from generate_bidirectional_application import ports
 from generate_lifecycle_send_windows import replace_once
 from generate_two_fpga_application import add_ports,instance,named_instance,rename
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sources=[];targets=[]
     def read(name):
-        p=root/f'rtl/{name}.v';sources.append(p);return p.read_text()
+        p=source_path(root, f'rtl/{name}.v');sources.append(p);return p.read_text()
     def emit(name,text):
-        p=root/f'rtl/{name}.v';p.write_text(text);targets.append(p)
+        p=source_path(root, f'rtl/{name}.v');p.write_text(text);targets.append(p)
     def swap(text,old,new,label,extra):
         start,end,params,connections=instance(text,old,label);connections.update({n:n for _,_,n in extra})
         return text[:start]+named_instance(new,params,label,connections)+text[end:]
@@ -119,8 +121,8 @@ default:classifier_owner<=0;endcase end'''
     text=text.replace('endmodule','\n'.join(extra)+'\nendmodule');emit('http2_shutdown_classified_controls',text)
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     (root/'build/validation/http2-shutdown-controls-generation.json').write_text(json.dumps(dict(
-        phase='generated_actual_shutdown_control_owners',input_sha256={p.relative_to(root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
-        generated_sha256={p.relative_to(root).as_posix():sha(p)for p in targets},
+        phase='generated_actual_shutdown_control_owners',input_sha256={source_relative(p, root).as_posix():sha(p)for p in[*sources,Path(__file__)]},
+        generated_sha256={source_relative(p, root).as_posix():sha(p)for p in targets},
         shared_actual_history_classifier=True,durable_goaway_without_odd_rpc_cutoff=True,full_system_complete=False),indent=2)+'\n')
     print('Generated shutdown executor, shared history arbitration and durable incoming GOAWAY owner')
 

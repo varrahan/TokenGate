@@ -3,11 +3,13 @@ import argparse
 from pathlib import Path
 import re
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args();root=Path(__file__).resolve().parents[1]
-    source=(root/'rtl/http2_grpc_prefill.v').read_text()
+    source=(source_path(root, 'rtl/http2_grpc_prefill.v')).read_text()
     match=re.search(r'module\s+http2_grpc_prefill\s*#\((.*?)\)\s*\((.*?)\);',source,re.S)
     if not match:raise ValueError('Cannot identify complete prefill interface')
     header=re.sub(r'//[^\n]*','',match[2]);ports=[];direction=width=None

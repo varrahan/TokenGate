@@ -9,6 +9,8 @@ from generate_bidirectional_application import ports
 from generate_receive_pool_experiment import replace
 from generate_two_fpga_application import add_ports, instance, named_instance, MEMORY
 
+from rtl_paths import source_path, source_relative
+
 
 CLOSE = [('output', '', 'transport_close_valid'), ('input', '', 'transport_close_ready'),
     ('output', '[USER_WIDTH-1:0]', 'transport_close_user'),
@@ -27,13 +29,13 @@ def main():
     inputs = {}
     for p in (previous / 'rtl').glob('*.v'):
         shutil.copy2(p, target / p.name)
-        inputs[p.relative_to(root).as_posix()] = sha(p)
+        inputs[source_relative(p, root).as_posix()] = sha(p)
 
     def read(name):
         p = previous / 'rtl' / (name + '.v')
         if not p.exists():
-            p = root / 'rtl' / (name + '.v')
-        inputs[p.relative_to(root).as_posix()] = sha(p)
+            p = source_path(root, Path('rtl') / (name + '.v'))
+        inputs[source_relative(p, root).as_posix()] = sha(p)
         return p.read_text()
 
     def emit(name, text):
@@ -148,7 +150,7 @@ end
     for p in (previous / 'sim').glob('*'):
         if p.is_file():
             shutil.copy2(p, sim / p.name)
-            inputs[p.relative_to(root).as_posix()] = sha(p)
+            inputs[source_relative(p, root).as_posix()] = sha(p)
     fixture = (sim / 'cocotb_two_fpga_enveloped_top.sv').read_text()
     fixture = extend(extend(fixture, 18, 19), 27, 28)
     fixture = fixture.replace('.CLIENTS(18)', '.CLIENTS(19)').replace('client<27', 'client<28').replace('fault_client<27', 'fault_client<28')
@@ -163,7 +165,7 @@ end
         'assign fabric_status[26*8+:8]=p_fabric_status[17*8+:8];\nassign fabric_status[27*8+:8]=p_fabric_status[18*8+:8];')
     (sim / 'cocotb_two_fpga_enveloped_top.sv').write_text(fixture)
     error_test = root / 'sim/cocotb/test_raw_receive_errors.py'
-    inputs[error_test.relative_to(root).as_posix()] = sha(error_test)
+    inputs[source_relative(error_test, root).as_posix()] = sha(error_test)
     text = error_test.read_text()
     text = replace(text, 'from test_two_fpga_application import SeparateMemory',
         'from test_two_fpga_application import SeparateMemory\nfrom local_error_witness import LocalErrorWitness')
@@ -175,12 +177,12 @@ end
         "    actual['local_error_ownership']=local_error.result()\n    # Keep the complete protocol acceptance assertion strict")
     (sim / error_test.name).write_text(text)
     drain_test = root / 'sim/cocotb/test_local_error_gpu_drain.py'
-    inputs[drain_test.relative_to(root).as_posix()] = sha(drain_test)
+    inputs[source_relative(drain_test, root).as_posix()] = sha(drain_test)
     shutil.copy2(drain_test,sim/'test_raw_grpc_duplex.py')
     witness = root / 'sim/cocotb/local_error_witness.py'
-    inputs[witness.relative_to(root).as_posix()] = sha(witness)
+    inputs[source_relative(witness, root).as_posix()] = sha(witness)
     fault_witness = root / 'sim/cocotb/local_error_fault_witness.py'
-    inputs[fault_witness.relative_to(root).as_posix()] = sha(fault_witness)
+    inputs[source_relative(fault_witness, root).as_posix()] = sha(fault_witness)
     for fault in (0, 1):
         changed = replace(text, 'from local_error_witness import LocalErrorWitness',
             'from local_error_fault_witness import LocalErrorFaultWitness as LocalErrorWitness')

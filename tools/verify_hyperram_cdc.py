@@ -7,6 +7,8 @@ import re
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -22,7 +24,7 @@ def main():
             macro=Path(name).stem
             installed=Path('C:/AMDDesignTools/2025.2/Vivado/data/ip/xpm')/macro/'hdl'/(macro+'.sv')
             assert sha(installed)==digest
-        else:assert sha(root/name)==digest
+        else:assert sha(source_path(root, name))==digest
     flags=report['compiler_flags']
     assert all(flag in flags for flag in('--assert','--bbox-unsup','-DOBSOLETE','-DONESPIN'))
     xml_text=(archive/'elaboration.xml').read_text();xml=ET.fromstring(xml_text)
@@ -49,7 +51,7 @@ def main():
     assert accepted['command_bits']==607 and accepted['response_bits']==521
     code=json.loads((root/'build/validation/hyperram-cdc-generated-code.json').read_text())
     for label,count in(('failing_fixture',0),('corrected_fixture',1)):
-        record=code['records'][label];source=root/record['cpp_file']
+        record=code['records'][label];source=source_path(root, record['cpp_file'])
         assert sha(source)==record['cpp_sha256']
         assert source.read_text().count('pending_responses.pop_front()')==count==record['pending_response_pop_calls']
     assert code['records']['corrected_fixture']['binary_sha256']==report['binary_sha256']
@@ -64,7 +66,7 @@ def main():
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/hyperram-cdc-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
     (evidence/'verified.json').write_text(json.dumps(result,indent=2)+'\n')
-    for p in(Path(__file__),root/'rtl/cdc_packet_fifo.v',root/'rtl/hyperram_clock_bridge.v',
+    for p in(Path(__file__),source_path(root, 'rtl/cdc_packet_fifo.v'),source_path(root, 'rtl/hyperram_clock_bridge.v'),
         root/'sim/tb_hyperram_clock_bridge.sv',root/'tools/collect_hyperram_cdc_generated_code.py'):shutil.copy2(p,evidence/p.name)
     result['evidence_folder']=str(evidence)
     (root/'build/validation/hyperram-cdc.json').write_text(json.dumps(result,indent=2)+'\n')

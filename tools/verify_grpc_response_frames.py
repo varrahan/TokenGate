@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure, resources, timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -50,7 +52,7 @@ def main():
         top='grpc_http2_response_framer', acceptance=acceptance, execution_inputs_verified=len(inputs),
         input_sha256=inputs, verifier_sha256=sha(Path(__file__)),
         current_primary_differences=[name for name, digest in inputs.items()
-            if not (root / name).is_file() or sha(root / name) != digest],
+            if not (source_path(root, name)).is_file() or sha(source_path(root, name)) != digest],
         serializer_rpc_integration_verified=False, response_headers_trailers_verified=False,
         credit_ledger_verified=False, full_http2_transport_verified=False, full_system_complete=False)
     files = {Path('execution') / name: executed / name for name in inputs}
@@ -74,7 +76,7 @@ def main():
         for name in provenance['files']:
             if not name.startswith('rtl/'):
                 files[Path('native/sources') / name] = sources / name
-        native_log = root / ('build/' + args.native_run + '-implementation.log')
+        native_log = source_path(root, 'build/' + args.native_run + '-implementation.log')
         text = native_log.read_text()
         assert 'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP=grpc_http2_response_framer PART=xcsu35p-sbvb625-2-e' in text
         assert '0 Critical Warnings and 0 Errors encountered.' in text and 'ERROR: [Synth' not in text

@@ -14,6 +14,8 @@ from hyperframe.frame import Frame
 from verify_frame_event_buffer_protocol import differences,timing_path
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 CASES=('native','other_connection','owned_gpu_drain','retained_native','all_ledger_faults','retained_shutdown','external_denial')
 
@@ -188,7 +190,7 @@ def main():
         complete_images_and_native_packages_preserved=True,all_original_traffic_vectors_preserved=True,
         exact_fixture_edit_inverses_verified=True,only_validated_capacity_and_timing_differences=True,
         full_protocol_fault_matrix_verified=False,native_vendor_memory_verified=False,native_timing_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in artifacts},verifier_sha256=sha(Path(__file__)))
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in artifacts},verifier_sha256=sha(Path(__file__)))
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation'/(label+'-protocol-evidence')/result['key'];evidence.mkdir(parents=True,exist_ok=False)
     shutil.copy2(Path(__file__),evidence/Path(__file__).name);shutil.copy2(driver,evidence/driver.name)

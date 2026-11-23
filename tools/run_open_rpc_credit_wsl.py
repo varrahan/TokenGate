@@ -13,6 +13,8 @@ import sys
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def ordinal_edits(text):
     edits = [
@@ -125,7 +127,7 @@ def main():
     inputs[name] = sha(path)
     edits.append(dict(path=name, old_sha256=baseline[name], new_sha256=inputs[name],
         replacements=replacements, exact_inverse_verified=True, purpose='Add only the new test profile'))
-    added_sources = ['sim/cocotb/test_raw_open_rpc_credit.py', 'tools/run_open_rpc_credit_wsl.py']
+    added_sources = ['sim/cocotb/test_raw_open_rpc_credit.py', 'tools/run_open_rpc_credit_wsl.py', 'tools/rtl_paths.py']
     if args.profile in ('reclaim-faults','capacity-grant-faults'):
         added_sources.append('sim/cocotb/test_raw_reclaim_faults.py')
     if args.profile == 'large-message-credit':
@@ -140,7 +142,7 @@ def main():
         added_sources.append('sim/cocotb/test_raw_capacity_format_owner.py')
     for name in added_sources:
         destination = target / name
-        shutil.copy2(root / name, destination)
+        shutil.copy2(source_path(root, name), destination)
         inputs[name] = sha(destination)
     modified_tests = {e['path'] for e in edits}
     for name, digest in baseline.items():

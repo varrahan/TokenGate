@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--snapshot-name',default='actual_raw_journaled_controls_drains')
@@ -91,8 +93,8 @@ def main():
         verified_utc=datetime.now(timezone.utc).isoformat(),snapshot=args.snapshot_name,acceptance=accepted,
         execution_sources=len(report['source_sha256']),execution_fixtures=len(report['fixture_sha256']),parser_modules=list(p),tokenizer_modules=list(t),
         exact_join_harness_and_native_reference_regeneration_verified=True,single_actual_directory_verified=True,
-        current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h],
-        current_active_rtl_matches=all(sha(root/path.relative_to(executed))==sha(path)for path in p.values()),
+        current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h],
+        current_active_rtl_matches=all(sha(source_path(root, path.relative_to(executed)))==sha(path)for path in p.values()),
         full_data_execution_verified=args.full,non_window_controllers_verified=False,postcommit_gpu_cancellation_verified=False,
         complete_parser_native_timing_verified=False,physical_interfaces_verified=False,full_system_complete=False,
         evidence_folder=str(evidence),verifier_sha256=sha(Path(__file__)))

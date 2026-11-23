@@ -13,6 +13,8 @@ import subprocess
 import sys
 import tempfile
 
+from rtl_paths import source_path, source_relative
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -64,7 +66,7 @@ def main():
         for name, digest in inputs.items():
             pin(folder/'sources'/name, digest)
             if name.startswith(('rtl/', 'sim/')):
-                current = qualified/name if name == 'rtl/cdc_packet_fifo.v' else ROOT/name
+                current = qualified/name if name == 'rtl/cdc_packet_fifo.v' else source_path(ROOT, name)
                 pin(current, digest)
             elif name.startswith('vendor/xpm_'):
                 macro = Path(name).stem
@@ -85,7 +87,7 @@ def main():
                ('tools/run_async_hyperram_windows.py', run, assembly/'run_async_hyperram_windows-full_image.py'),
                ('tools/run_hyperram_cdc_windows.py', clocks, profiles/'run_hyperram_cdc_windows.py')]
     for name, report, frozen in drivers:
-        pin(ROOT/name, report['driver_sha256'])
+        pin(source_path(ROOT, name), report['driver_sha256'])
         pin(frozen, report['driver_sha256'])
     assert 'xpm_source' in elaboration['commands'][-1] and 'xpm' not in elaboration['commands'][-1]
     assert 'work.glbl' in elaboration['commands'][-1]
@@ -103,7 +105,7 @@ def main():
         for name in list(syntax['inputs_sha256']) + ['rtl/cdc_packet_fifo.v']:
             if not name.startswith(('rtl/', 'sim/')):
                 continue
-            source = ROOT/name; target = replay/name
+            source = source_path(ROOT, name); target = replay/name
             target.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(source, target)
         for name in generators[1:]:
             subprocess.run([sys.executable, str(replay/'tools'/(name+'.py'))], check=True, capture_output=True)
@@ -164,7 +166,7 @@ def main():
                   primary_fifo_modified=False, cdc_signoff_verified=False, open_reset_fanout_findings=2,
                   full_assembly_native_timing_verified=False, tokenizer_instantiation_verified=False,
                   pin_level_ddr_phy_verified=False, rwds_cdc_verified=False, whole_model_epoch_commit_verified=False,
-                  full_system_complete=False, artifacts_sha256={str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p):sha(p) for p in sorted(artifacts)})
+                  full_system_complete=False, artifacts_sha256={str(source_relative(p, ROOT)) if p.is_relative_to(ROOT) else str(p):sha(p) for p in sorted(artifacts)})
     result['key'] = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:16]
     evidence = ROOT/'build/validation/hyperram-async-native-evidence'/result['key']; evidence.mkdir(parents=True, exist_ok=True)
     (evidence/'verified.json').write_text(json.dumps(result, indent=2)+'\n')

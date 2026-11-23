@@ -7,6 +7,8 @@ import re
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -58,7 +60,7 @@ def main():
         complete_master_xdc_still_required=True,physical_hardware_available=False,
         target_validation_scope='Simulation, synthesis and implementation; physical board bring-up is unavailable per user',
         package_phy_timing_verified=False,physical_board_bringup_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in
             [log_path,tsv,root/'build/validation/scu35-board-vivado/board-properties.rpt',
              root/'scripts/validate_scu35_board_definition.tcl',root/'build/validation/scu35-board-definition.json']+
             [folder/n for n in fetched['files']]},verifier_sha256=sha(Path(__file__)))

@@ -16,6 +16,8 @@ import xml.etree.ElementTree as ET
 import tiktoken
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--headers',default='actual_headers_synthesis_safe_strings')
@@ -36,9 +38,9 @@ def main():
         assert len(cases)==1 and cases[0].attrib['name']==test and not xml.findall('.//failure')and not xml.findall('.//error')
         dag=closure(top,source);assert len(dag)==count
         for path in dag.values():
-            n=path.relative_to(source).as_posix();assert sha(root/n)==inputs[n],'Current active RTL differs: '+n
+            n=path.relative_to(source).as_posix();assert sha(source_path(root, n))==inputs[n],'Current active RTL differs: '+n
         records[label]=dict(acceptance=accepted,execution_inputs=len(inputs),production_modules=list(dag),current_active_rtl_matches=True,
-            current_primary_differences=[n for n,h in inputs.items()if not n.startswith('native-vendor/')and(not(root/n).is_file()or sha(root/n)!=h)])
+            current_primary_differences=[n for n,h in inputs.items()if not n.startswith('native-vendor/')and(not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h)])
         for n in('report.json','snapshot.json','inputs.json','acceptance.json','simulation.log','build.log','results.xml'):
             files[Path(label)/'reports'/n]=archive/n
         return source,inputs,accepted
@@ -65,7 +67,7 @@ def main():
         'held_gpu_results_retain_actual_load','complete_model_prefix_immutable'):assert rpc[n],n
     assert not any(rpc[n]for n in('raw_network_request_and_reset_joined','sse_transport_joined','whole_rpc_gpu_image_lease_verified','full_system_complete'))
     for path in closure('inverse_tokenizer_partition',source).values():
-        n=path.relative_to(source).as_posix();assert sha(root/n)==inputs[n]
+        n=path.relative_to(source).as_posix();assert sha(source_path(root, n))==inputs[n]
     assert unit_inputs['rtl/grpc_response_headers.v']==inputs['rtl/grpc_response_headers.v']
     assert unit_inputs['rtl/axis_cancellable_frame_arbiter.v']==inputs['rtl/axis_cancellable_frame_arbiter.v']
 
@@ -82,7 +84,7 @@ def main():
     subprocess.run([sys.executable,str(replay/'tools/generate_rpc_http2_return.py')],check=True,capture_output=True,text=True)
     generated=['rtl/rpc_http2_response_partition.v','rtl/http2_enveloped_frame_grants.v','rtl/rpc_grpc_http2_parser_response.v',
         'rtl/rpc_grpc_http2_return.v','sim/cocotb_rpc_http2_top.sv']
-    for n in generated:assert sha(replay/n)==inputs[n]==sha(root/n),n
+    for n in generated:assert sha(replay/n)==inputs[n]==sha(source_path(root, n)),n
     parent=(source/'rtl/rpc_grpc_http2_return.v').read_text();child=(source/'rtl/rpc_grpc_http2_parser_response.v').read_text()
     assert '.frame_tx_done(response_data_done)'in parent and '.a_pause(envelope_match_freeze&&!frame_wire_pending)'in parent
     assert 'assign data_frame_tx_done=body_tvalid&&body_tready&&body_tlast;'in child
@@ -131,13 +133,13 @@ def main():
 
     folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/args.native_run
     native=dict(phase='not_yet_verified',run=args.native_run,timing_met=False)
-    log=root/f'build/{args.native_run}-implementation.log'
+    log=source_path(root, f'build/{args.native_run}-implementation.log')
     if(folder/'routed_timing.rpt').is_file()and'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE'in log.read_text():
         frozen=folder/'sources';provenance=json.loads((folder/'source-provenance.json').read_text())
         for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
         dag=closure('rpc_grpc_http2_return',frozen);assert len(dag)==20
         for path in dag.values():
-            n=path.relative_to(frozen).as_posix();assert sha(path)==inputs[n]==sha(root/n)
+            n=path.relative_to(frozen).as_posix();assert sha(path)==inputs[n]==sha(source_path(root, n))
             files[Path('native/sources')/n]=path
         clocks=timing(folder/'routed_timing.rpt');area=resources(folder/'routed_utilization.rpt')
         assert re.search(r'# of nets with routing errors\.+\s*:\s*0\s*:',(folder/'route_status.rpt').read_text())

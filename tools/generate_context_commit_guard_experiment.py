@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 import shutil
 
+from rtl_paths import source_path, source_relative
+
 
 FIELDS = [('context_write_busy', ''), ('context_write_user', '[USER_WIDTH-1:0] '),
           ('context_write_address', '[MEMORY_ADDR_WIDTH-1:0] '),
@@ -24,7 +26,7 @@ def main():
 
     def source(name):
         p = previous / (name + '.v')
-        if not p.is_file(): p = root / 'rtl' / (name + '.v')
+        if not p.is_file(): p = source_path(root, Path('rtl') / (name + '.v'))
         originals[name] = p
         return p.read_text()
 
@@ -116,7 +118,7 @@ def main():
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     result = dict(phase='isolated_context_commit_guard_generated',
         previous_overrides={p.name: sha(p) for p in previous.glob('*.v')},
-        changed_inputs={n: dict(path=str(p.relative_to(root)), sha256=sha(p)) for n, p in originals.items()},
+        changed_inputs={n: dict(path=str(source_relative(p, root)), sha256=sha(p)) for n, p in originals.items()},
         generated_sha256={p.name: sha(p) for p in target.glob('*.v')},
         generator_sha256=sha(Path(__file__)), production_rtl_changed=False, full_system_complete=False)
     (target.parent / 'generation.json').write_text(json.dumps(result, indent=2) + '\n')

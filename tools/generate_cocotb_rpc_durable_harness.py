@@ -9,6 +9,8 @@ from generate_bidirectional_application import ports
 from generate_rpc_durable_return import once
 from generate_two_fpga_application import MEMORY, instance, named_instance
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, required=True)
@@ -20,8 +22,8 @@ def main():
     subprocess.run([sys.executable, str(root / 'tools/generate_cocotb_rpc_leased_harness.py'), '--output', str(base)], check=True)
     source = base.read_text().replace('module cocotb_rpc_leased_top;', f'module {harness_top};')
     start, end, parameters, connections = instance(source, 'rpc_grpc_leased_return', 'dut')
-    old = ports((root / 'rtl/rpc_grpc_leased_return.v').read_text(), 'rpc_grpc_leased_return')
-    new = ports((root / f'rtl/{return_top}.v').read_text(), return_top)
+    old = ports((source_path(root, 'rtl/rpc_grpc_leased_return.v')).read_text(), 'rpc_grpc_leased_return')
+    new = ports((source_path(root, f'rtl/{return_top}.v')).read_text(), return_top)
     original_names = {n for _, _, n in old}; new_names = {n for _, _, n in new}
     connections = {n: value for n, value in connections.items() if n in new_names}
     extra = []

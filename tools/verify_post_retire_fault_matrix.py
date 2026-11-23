@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--cases',nargs='+')
@@ -119,12 +121,12 @@ def main():
         'build/experiments/post-commit-retire-fault-probe/test_raw_grpc_duplex.py',
         'build/wsl-reports/raw_envelope_post_retire_memory_trace/acceptance.json',
         'build/wsl-reports/raw_envelope_post_retire_memory_trace/snapshot.json',
-        'tools/generate_post_retire_scope_case.py','sim/cocotb/post_retire_scope_bench.py']
-    assert generation['generator_sha256']==sha(root/paths[1]) and generation['source_sha256']==sha(root/paths[8])
-    assert trace_generation['generator_sha256']==sha(root/paths[0]) and trace_generation['source_sha256']==sha(root/paths[7])
-    assert scope_generation['generator_sha256']==sha(root/paths[-2]) and scope_generation['source_sha256']==sha(root/paths[7])
+        'tools/generate_post_retire_scope_case.py','sim/cocotb/post_retire_scope_bench.py', 'tools/rtl_paths.py']
+    assert generation['generator_sha256']==sha(source_path(root, paths[1])) and generation['source_sha256']==sha(source_path(root, paths[8]))
+    assert trace_generation['generator_sha256']==sha(source_path(root, paths[0])) and trace_generation['source_sha256']==sha(source_path(root, paths[7]))
+    assert scope_generation['generator_sha256']==sha(source_path(root, paths[-2])) and scope_generation['source_sha256']==sha(source_path(root, paths[7]))
     for n in paths:
-        target=replay/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,target)
+        target=replay/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),target)
     for generator,subfolder,manifest in (('generate_post_retire_memory_trace.py','post-retire-memory-trace',trace_generation),
         ('generate_post_retire_fault_matrix.py','post-retire-fault-matrix',generation),
         ('generate_post_retire_scope_case.py','post-retire-scope',scope_generation)):
@@ -132,9 +134,9 @@ def main():
         assert json.loads((replay/'build/experiments'/subfolder/'generation.json').read_text())==manifest
     if adapted:
         adapter='tools/generate_progress_format_regressions.py'
-        assert adapted['generator_sha256']==sha(root/adapter)
+        assert adapted['generator_sha256']==sha(source_path(root, adapter))
         for n in {adapter}|{case['source'] for case in adapted['cases'].values()}:
-            target=replay/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,target)
+            target=replay/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),target)
         for n in ('progress_format_witness.py',):
             target=replay/'sim/cocotb'/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/'sim/cocotb'/n,target)
         subprocess.run([sys.executable,str(replay/adapter)],check=True,capture_output=True,text=True)
@@ -159,7 +161,7 @@ def main():
     key=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation'/((variant+'-retire-fault-evidence') if variant else 'post-retire-fault-evidence')/key;evidence.mkdir(parents=True,exist_ok=True)
     (evidence/'verified.json').write_text(json.dumps(result,indent=2)+'\n')
-    for p in (Path(__file__),folder/'generation.json',root/paths[0],root/paths[1],root/paths[5],root/paths[6],root/paths[-2],root/paths[-1]):shutil.copy2(p,evidence/p.name)
+    for p in (Path(__file__),folder/'generation.json',source_path(root, paths[0]),source_path(root, paths[1]),source_path(root, paths[5]),source_path(root, paths[6]),source_path(root, paths[-2]),source_path(root, paths[-1])):shutil.copy2(p,evidence/p.name)
     result.update(key=key,evidence_folder=str(evidence))
     output=root/'build/validation'/((variant+'-' if variant else '')+('post-retire-fault-matrix.json' if complete else 'post-retire-selected-faults.json'))
     output.write_text(json.dumps(result,indent=2)+'\n')

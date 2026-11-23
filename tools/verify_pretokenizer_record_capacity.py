@@ -7,6 +7,8 @@ from pathlib import Path
 import shutil
 import z3
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -89,7 +91,7 @@ def main():
         netlist_equivalence_verified=False,whole_system_formal_induction_verified=False,
         new_candidate_functional_simulation_verified=False,full_system_complete=False,
         query_sha256={name:hashlib.sha256(text.encode()).hexdigest()for name,text in smt.items()},
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in(old,new,parent,candidate/'report.json',Path(__file__))})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in(old,new,parent,candidate/'report.json',Path(__file__))})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence=root/'build/validation/pretokenizer-record-capacity-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
     for name,text in smt.items():(evidence/(name+'.smt2')).write_text(text)

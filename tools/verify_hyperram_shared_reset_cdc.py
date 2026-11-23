@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 import shutil
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -15,7 +17,7 @@ def main():
     functional_path=root/'build/validation/hyperram-shared-reset.json'
     functional=json.loads(functional_path.read_text())
     assert native['functional_audit_key']==functional['key']=='07002b9a4dd73fb7'
-    for name,digest in native['artifacts_sha256'].items():assert sha(root/name)==digest,name
+    for name,digest in native['artifacts_sha256'].items():assert sha(source_path(root, name))==digest,name
     folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/native['run']
     assert native['timing_met']and native['vendor_bus_skew_met']
     assert all(value==0 for value in native['unconstrained'].values())
@@ -66,7 +68,7 @@ def main():
         native_timing_verified=True,cdc_structure_review_verified=True,
         analog_metastability_verified=False,formal_cdc_signoff_verified=False,package_timing_verified=False,
         pin_level_ddr_phy_verified=False,rwds_cdc_verified=False,tokenizer_instantiation_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in(native_path,functional_path,folder/'routed_cdc.rpt',
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in(native_path,functional_path,folder/'routed_cdc.rpt',
             folder/'routed_bus_skew.rpt',folder/'routed_exceptions.rpt',folder/'routed_drc.rpt',Path(__file__))})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     output=root/'build/validation/hyperram-shared-reset-cdc-review.json';output.write_text(json.dumps(result,indent=2)+'\n')

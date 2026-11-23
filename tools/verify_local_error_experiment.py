@@ -13,6 +13,8 @@ import tiktoken
 from verify_native_grpc_corpus_reference import varint
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -60,7 +62,7 @@ def main():
         hashes = current
         for path in [*dag.values(), *tokenizer.values()]:
             n = path.relative_to(source).as_posix()
-            assert inputs[n] == overrides.get(n, sha(root / n)), n
+            assert inputs[n] == overrides.get(n, sha(source_path(root, n))), n
         expected = generation['fault_test_sha256'][overlay] if '/' in overlay else generation['sim_sha256'][overlay]
         assert inputs['sim/cocotb/' + test_file] == expected
         assert inputs['sim/cocotb_two_fpga_enveloped_top.sv'] == generation['sim_sha256']['cocotb_two_fpga_enveloped_top.sv']
@@ -138,7 +140,7 @@ def main():
         'tools/generate_two_fpga_application.py', 'tools/generate_bidirectional_application.py'}
     assert generation['generator_sha256'] == sha(root / 'tools/generate_local_error_experiment.py')
     for name in sorted(paths):
-        path = root / name
+        path = source_path(root, name)
         assert name not in generation['input_sha256'] or sha(path) == generation['input_sha256'][name]
         destination = replay / name
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -163,7 +165,7 @@ def main():
     evidence = root / 'build/validation/local-error-evidence' / key
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / 'verified.json').write_text(json.dumps(result, indent=2) + '\n')
-    for path in (Path(__file__), root / 'tools/generate_local_error_experiment.py', root / 'rtl/http2_local_error_response.v',
+    for path in (Path(__file__), root / 'tools/generate_local_error_experiment.py', source_path(root, 'rtl/http2_local_error_response.v'),
                  root / 'sim/cocotb/local_error_witness.py', root / 'sim/cocotb/local_error_fault_witness.py', root / 'sim/cocotb/test_local_error_gpu_drain.py'):
         shutil.copy2(path, evidence / path.name)
     result.update(key=key, evidence_folder=str(evidence))

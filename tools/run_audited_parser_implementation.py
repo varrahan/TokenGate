@@ -11,6 +11,8 @@ import sys
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -101,16 +103,16 @@ def main():
     hashes = {}
     for module, digest in expected.items():
         source = original / 'rtl' / (module + '.v')
-        assert sha(source) == digest and (root / 'rtl' / source.name).is_file()
+        assert sha(source) == digest and (source_path(root, Path('rtl') / (source.name))).is_file()
         destination = inputs / 'rtl' / source.name
         destination.parent.mkdir(exist_ok=True)
         shutil.copy2(source, destination)
         hashes['rtl/' + source.name] = digest
     for name in ('scripts/implement_registered_subsystem.tcl', 'scripts/run_registered_subsystem_implementation.ps1',
-                 'tools/generate_parser_timing_harness.py', 'tools/capture_source_provenance.py', 'constraints/parser.xdc'):
+                 'tools/generate_parser_timing_harness.py', 'tools/capture_source_provenance.py', 'constraints/parser.xdc', 'tools/rtl_paths.py', 'scripts/rtl_sources.tcl'):
         target = inputs / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / name, target)
+        shutil.copy2(source_path(root, name), target)
         hashes[name] = sha(target)
     shutil.copy2(audit_path, inputs / 'source-functional-audit.json')
     shutil.copy2(Path(__file__), inputs / Path(__file__).name)

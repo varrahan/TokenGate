@@ -10,6 +10,8 @@ import shutil
 from generate_hyperram_cdc_timing_harness import ports
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_relative
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -128,7 +130,7 @@ def main():
     target=experiment/'rtl/tokenizer_hyperram_subsystem.v';target.write_text('\n'.join(lines))
     result=dict(phase='actual_tokenizer_cache_and_hyperram_assembly_generated',
         generator_sha256=sha(Path(__file__)),controller_functional_audit_key=baseline['key'],
-        application_modules=list(dependencies),inputs_sha256={p.relative_to(root).as_posix():sha(p)for p in set(dependencies.values())},
+        application_modules=list(dependencies),inputs_sha256={source_relative(p, root).as_posix():sha(p)for p in set(dependencies.values())},
         outputs_sha256={p.relative_to(experiment).as_posix():sha(p)for p in(experiment/'rtl').glob('*.v')},
         actual_tokenizer_and_cache_instantiated=True,exclusive_host_loader_axi=True,
         image_activation_fences_application=True,maintenance_requires_external_grant_and_local_idle=True,

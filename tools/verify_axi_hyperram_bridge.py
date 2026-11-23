@@ -6,6 +6,8 @@ from pathlib import Path
 import shutil
 import xml.etree.ElementTree as ET
 
+from rtl_paths import source_path
+
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
@@ -15,7 +17,7 @@ def main():
     assert state['exit_code']==0 and report['phase']==accepted['phase']=='passed'
     assert report['input_sha256']==inputs and report['acceptance_sha256']==sha(archive/'acceptance.json')
     assert len(inputs)==4
-    for n,h in inputs.items():assert sha(source/n)==sha(root/n)==h,n
+    for n,h in inputs.items():assert sha(source/n)==sha(source_path(root, n))==h,n
     xml=ET.parse(archive/'results.xml');assert len(xml.findall('.//testcase'))==1
     assert not xml.findall('.//failure')and not xml.findall('.//error')
     assert xml.find('.//testcase').attrib['name']=='buffered_axi_transactions_preserve_data_and_errors'

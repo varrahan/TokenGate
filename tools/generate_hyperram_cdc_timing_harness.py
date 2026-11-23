@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+from rtl_paths import source_path
+
 
 def ports(source,module):
     match=re.search(r'module\s+'+re.escape(module)+r'\s*(?:#\(.*?\)\s*)?\((.*?)\);',source,re.S)
@@ -21,7 +23,7 @@ def ports(source,module):
 
 def main():
     root=Path(__file__).resolve().parents[1];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    source=root/'rtl/hyperram_clock_bridge.v';interface=ports(source.read_text(),'hyperram_clock_bridge')
+    source=source_path(root, 'rtl/hyperram_clock_bridge.v');interface=ports(source.read_text(),'hyperram_clock_bridge')
     lines=['`timescale 1ns/1ps','`default_nettype none','// Timing neighbors only; no package/board timing claim.',
         'module hyperram_clock_bridge_timing_harness(']
     for i,(d,w,n)in enumerate(interface):

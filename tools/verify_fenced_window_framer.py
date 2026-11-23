@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--snapshot',default='actual_owned_wire_drain_terminal_race');args=parser.parse_args()
@@ -31,7 +33,7 @@ def main():
         'http2_fenced_frame_grants','grpc_http2_response_framer','axis_cancellable_frame_arbiter'}<=dag.keys()
     assert sum(n=='grpc_stream_store'for n in dag)==1
     active={p.relative_to(executed).as_posix()for p in dag.values()}
-    for n in active:assert sha(root/n)==inputs[n],'Active RTL differs: '+n
+    for n in active:assert sha(source_path(root, n))==inputs[n],'Active RTL differs: '+n
     assert accepted['native_reference']=='hyperframe'and accepted['native_reference_version']=='6.1.0'
     assert accepted['reserved_memory_phases']==15 and accepted['cancelled_scenarios']==22 and accepted['wire_boundary_scenarios']==5
     assert accepted['uncertain_debit_ack_faults']==2 and accepted['native_frames']==46 and accepted['data_frames']==23
@@ -64,7 +66,7 @@ def main():
         ('legacy_grants','http2_cancel_frame_grants','http2_cancel_grants_scu35_initial'),
         ('joined','grpc_cancellable_window_framer','grpc_fenced_framer_scu35_initial'),
         ('refined_joined','grpc_cancellable_window_framer','grpc_fenced_framer_scu35_refined')):
-        folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/run;log=root/f'build/{run}-implementation.log'
+        folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/run;log=source_path(root, f'build/{run}-implementation.log')
         marker=f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={top} PART=xcsu35p-sbvb625-2-e'
         if not log.is_file()or marker not in log.read_text():
             native[label]=dict(phase='route_not_yet_verified',run=run);continue
@@ -72,7 +74,7 @@ def main():
         for n,r in provenance['files'].items():assert sha(frozen/n)==r['sha256']
         routed_dag=closure(top,frozen);assert len(routed_dag)==(6 if label=='legacy_grants'else 11)
         routed_active={p.relative_to(frozen).as_posix()for p in routed_dag.values()}
-        for n in routed_active:assert sha(frozen/n)==inputs[n]==sha(root/n)
+        for n in routed_active:assert sha(frozen/n)==inputs[n]==sha(source_path(root, n))
         script=(frozen/'scripts/implement_registered_subsystem.tcl').read_text()
         assert[line.strip()for line in script.splitlines()if line.strip().startswith('set_false_path')]==[
             'set_false_path -from [get_ports -filter {DIRECTION == IN && NAME != clk}]','set_false_path -to [all_outputs]']
@@ -102,7 +104,7 @@ def main():
         else:shutil.copy2(p,target)
     result=dict(phase='actual_reserved_data_wire_drain_and_key_close_verified',verified_utc=datetime.now(timezone.utc).isoformat(),
         acceptance=accepted,execution_inputs=len(inputs),production_modules=list(dag),current_active_rtl_matches=True,
-        current_primary_differences=[n for n,h in inputs.items()if not(root/n).is_file()or sha(root/n)!=h],
+        current_primary_differences=[n for n,h in inputs.items()if not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h],
         generation_replay_exact=True,single_actual_directory_verified=True,native=native,
         actual_rpc_return_integrated=False,actual_rst_controller_integrated=False,gpu_image_lease_cancellation_verified=False,
         full_system_complete=False,evidence_folder=str(evidence),verifier_sha256=sha(Path(__file__)))

@@ -38,7 +38,7 @@ def image():
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=Path(__file__).resolve().parents[1]/'rtl/http2_name_classifier.v')
+    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=Path(__file__).resolve().parents[1]/'rtl/parser/transport/http2/http2_name_classifier.v')
     args=parser.parse_args();words,nodes,edges=image()
     digest=hashlib.sha256(b''.join(w.to_bytes(2,'little')for w in words)).hexdigest()
     source=args.output.read_text();begin='        // BEGIN_NAME_ROM\n';end='        // END_NAME_ROM'

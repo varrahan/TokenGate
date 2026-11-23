@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument('--snapshot-name', default='window_commit_admission_final_runner')
@@ -80,7 +82,7 @@ def main():
     result = dict(phase='actual_admission_window_commit_functional_passed', verified_utc=datetime.now(timezone.utc).isoformat(),
         acceptance=accepted, execution_inputs=len(inputs), actual_rtl_modules=list(dependencies),
         exact_rtl_and_harness_regeneration_verified=True, single_actual_directory_verified=True,
-        current_primary_differences=[n for n, h in inputs.items() if not (root / n).is_file() or sha(root / n) != h],
+        current_primary_differences=[n for n, h in inputs.items() if not (source_path(root, n)).is_file() or sha(source_path(root, n)) != h],
         admission_native_timing_verified=False, complete_forward_application_joined=False,
         automatic_connection_bootstrap_verified=False, raw_control_integrated=False,
         full_system_complete=False, verifier_sha256=sha(Path(__file__)), evidence_folder=str(evidence))

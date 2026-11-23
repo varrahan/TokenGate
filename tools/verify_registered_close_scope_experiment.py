@@ -13,6 +13,8 @@ import xml.etree.ElementTree as ET
 
 from verify_two_fpga_application import closure,resources,timing
 
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--rpc',default='registered_closed_scope_compact_headers')
@@ -47,7 +49,7 @@ def main():
     assert float(properties['sim_time_duration'])==float(original_properties['sim_time_duration'])>0
     dag=closure('rpc_grpc_http2_return',source);assert len(dag)==20;changes=[]
     for name,p in dag.items():
-        n=p.relative_to(source).as_posix();assert sha(baseline_source/n)==baseline_inputs[n]==sha(root/n),n
+        n=p.relative_to(source).as_posix();assert sha(baseline_source/n)==baseline_inputs[n]==sha(source_path(root, n)),n
         if inputs[n]!=baseline_inputs[n]:changes.append(name)
     assert changes==['grpc_response_headers','rpc_grpc_http2_return']
     for n,h in inputs.items():
@@ -55,7 +57,7 @@ def main():
             assert h==baseline_inputs[n],n
     assert inputs['sim/cocotb/test_rpc_http2_return.py']==baseline_inputs['sim/cocotb/test_rpc_http2_return.py']
     for p in closure('inverse_tokenizer_partition',source).values():
-        n=p.relative_to(source).as_posix();assert inputs[n]==baseline_inputs[n]==sha(root/n)
+        n=p.relative_to(source).as_posix();assert inputs[n]==baseline_inputs[n]==sha(source_path(root, n))
     files[Path('baseline/rpc-http2-return.json')]=baseline_path
     compact_path=root/'build/validation/compact-grpc-headers-experiment.json';compact=json.loads(compact_path.read_text())
     assert compact['unbounded_post_reset_formatter_equivalence_verified']and compact['verifier_sha256']==sha(root/'tools/verify_compact_grpc_headers_experiment.py')
@@ -87,7 +89,7 @@ def main():
     for n in('report.json','snapshot.json','inputs.json','gold.v','gate.v','miter.v','proof.ys','yosys.log'):files[Path('proof/reports')/n]=proof/n
 
     replay=root/'build/validation/registered-close-scope-generation-replay';replay.mkdir(parents=True,exist_ok=True)
-    for n in('rtl/rpc_grpc_http2_return.v','tools/generate_registered_close_scope_experiment.py'):
+    for n in('rtl/rpc_grpc_http2_return.v','tools/generate_registered_close_scope_experiment.py', 'tools/rtl_paths.py'):
         p=replay/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(baseline_source/n if n.startswith('rtl/')else source/n,p)
     header=replay/'build/experiments/compact-grpc-headers/rtl/grpc_response_headers.v';header.parent.mkdir(parents=True,exist_ok=True)
     shutil.copy2(source/'rtl/grpc_response_headers.v',header)
@@ -120,12 +122,12 @@ def main():
             parser_dag=closure('http2_enveloped_parser_application',executed);tokenizer_dag=closure('tokenizer_fpga_memory_subsystem',executed)
             assert(len(parser_dag),len(tokenizer_dag))==(68,22)
             for p in[*parser_dag.values(),*tokenizer_dag.values()]:
-                n=p.relative_to(executed).as_posix();expected=inputs[n]if n in snapshot['isolated_rtl_overrides']else sha(root/n)
+                n=p.relative_to(executed).as_posix();expected=inputs[n]if n in snapshot['isolated_rtl_overrides']else sha(source_path(root, n))
                 assert raw_inputs[n]==expected,n
             assert raw_acceptance==raw_baseline[field]
             raw_records[profile]=dict(acceptance=raw_acceptance,exact_experimental_parser_and_tokenizer_sources_verified=True)
             for n in('report.json','snapshot.json','inputs.json','acceptance.json','simulation.log','build.log','results.xml'):files[Path('raw')/profile/'reports'/n]=raw/n
-    folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/args.native_run;log=root/f'build/{args.native_run}-implementation.log'
+    folder=root/'build/implementation/xcsu35p-sbvb625-2-e'/args.native_run;log=source_path(root, f'build/{args.native_run}-implementation.log')
     native=dict(phase='not_yet_verified',timing_met=False,run=args.native_run)
     if log.is_file()and'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE'in log.read_text():
         provenance=json.loads((folder/'source-provenance.json').read_text());frozen=folder/'sources'
@@ -148,7 +150,7 @@ def main():
         assert 'native'in raw_records,'Full Parser native audit requires the experimental raw integration execution'
         part='xcau15p-ffvb676-2-e';top='http2_enveloped_parser_application'
         folder=root/'build/implementation'/part/args.parser_native_run
-        log=root/f'build/{args.parser_native_run}-implementation.log'
+        log=source_path(root, f'build/{args.parser_native_run}-implementation.log')
         parser_native=dict(phase='not_yet_verified',timing_met=False,run=args.parser_native_run,part=part,top=top)
         marker=f'REGISTERED_SUBSYSTEM_ROUTE_COMPLETE TOP={top} PART={part}'
         log_bytes=log.read_bytes()if log.is_file()else b'';native_log=log_bytes.decode()

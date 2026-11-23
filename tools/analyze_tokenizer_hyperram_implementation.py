@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--run',required=True);args=parser.parse_args()
@@ -114,7 +116,7 @@ def main():
         actual_tokenizer_cache_controller_instantiated=True,external_whole_rpc_image_grant_implementation_verified=False,
         package_timing_verified=False,pin_level_ddr_phy_verified=False,rwds_cdc_verified=False,
         pcie_verified=False,physical_link_verified=False,formal_cdc_signoff_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p)for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p)for p in sorted(artifacts)})
     result['key']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     output=root/'build/validation/tokenizer-hyperram-native.json';output.write_text(json.dumps(result,indent=2)+'\n')
     evidence=root/'build/validation/tokenizer-hyperram-native-evidence'/result['key'];evidence.mkdir(parents=True,exist_ok=True)
@@ -123,7 +125,7 @@ def main():
             target=evidence/name;assert target.resolve().is_relative_to(evidence.resolve())
             target.parent.mkdir(parents=True,exist_ok=True)
             if target.exists():assert sha(target)==digest
-            else:target.write_bytes((root/name).read_bytes())
+            else:target.write_bytes((source_path(root, name)).read_bytes())
     shutil.copy2(output,evidence/'verified.json');shutil.copy2(Path(__file__),evidence/Path(__file__).name)
     print(json.dumps({key:result[key]for key in('phase','key','core_resources','resource_fit','setup_slack_ns','hold_slack_ns','cdc_counts')}))
 

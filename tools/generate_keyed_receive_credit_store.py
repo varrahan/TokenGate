@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from generate_bidirectional_application import ports
 
+from rtl_paths import source_path
+
 
 BODY = r'''
 localparam IDLE=0,PREPARE=1,PRECHECK_SEND=2,PRECHECK_WAIT=3,SCAN_REQ=4,SCAN_WAIT=5,
@@ -113,7 +115,7 @@ end
 
 
 def main():
-    root = Path(__file__).resolve().parents[1]; base = root / 'rtl/http2_receive_credit_store.v'
+    root = Path(__file__).resolve().parents[1]; base = source_path(root, 'rtl/http2_receive_credit_store.v')
     public = ports(base.read_text(), 'http2_receive_credit_store')
     extra = [('input', '', 'req_keyed'), ('output', '', 'rsp_binding_valid'),
              ('output', '[MEMORY_ADDR_WIDTH-1:0]', 'rsp_record_address'), ('output', '[31:0]', 'rsp_generation')]
@@ -153,7 +155,7 @@ def main():
         connections.append('    .' + n + '(' + signal + ')')
     lines += ['http2_receive_credit_store #(.USER_WIDTH(USER_WIDTH),.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH)) controller(',
               ',\n'.join(connections), ');', 'endmodule', '`default_nettype wire']
-    target = root / 'rtl/http2_keyed_receive_credit_store.v'; target.write_text('\n'.join(lines) + '\n')
+    target = source_path(root, 'rtl/http2_keyed_receive_credit_store.v'); target.write_text('\n'.join(lines) + '\n')
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     report = dict(phase='keyed_receive_credit_store_generated', source_sha256=sha(base), output_sha256=sha(target),
         generator_sha256=sha(Path(__file__)), directory_authority_must_be_supplied_by_actual_parent=True, full_system_complete=False)

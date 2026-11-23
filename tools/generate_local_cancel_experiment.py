@@ -9,6 +9,8 @@ from generate_bidirectional_application import ports
 from generate_receive_pool_experiment import replace
 from generate_two_fpga_application import add_ports, instance, named_instance
 
+from rtl_paths import source_path, source_relative
+
 
 CLOSING = [('input', '', 'connection_closing_valid'), ('input', '[USER_WIDTH-1:0]', 'connection_closing_user')]
 CLOSING += [('input', w, 'connection_closing_' + n) for n, w in (
@@ -27,13 +29,13 @@ def main():
     inputs = {}
     for p in (previous / 'rtl').glob('*.v'):
         shutil.copy2(p, target / p.name)
-        inputs[p.relative_to(root).as_posix()] = sha(p)
+        inputs[source_relative(p, root).as_posix()] = sha(p)
 
     def read(name):
         p = previous / 'rtl' / (name + '.v')
         if not p.exists():
-            p = root / 'rtl' / (name + '.v')
-        inputs[p.relative_to(root).as_posix()] = sha(p)
+            p = source_path(root, Path('rtl') / (name + '.v'))
+        inputs[source_relative(p, root).as_posix()] = sha(p)
         return p.read_text()
 
     def emit(name, text):
@@ -194,24 +196,24 @@ assign local_abort_freeze_release_ready=local_freeze_owner==2&&local_freeze_gran
             dest = sim / p.relative_to(previous / 'sim')
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(p, dest)
-            inputs[p.relative_to(root).as_posix()] = sha(p)
+            inputs[source_relative(p, root).as_posix()] = sha(p)
     held = sim / 'held-trailer/test_raw_grpc_duplex.py'
     held.parent.mkdir(exist_ok=True)
     shutil.copy2(sim / 'test_raw_grpc_duplex.py', held)
     test = root / 'sim/cocotb/test_local_error_credit_stall.py'
-    inputs[test.relative_to(root).as_posix()] = sha(test)
+    inputs[source_relative(test, root).as_posix()] = sha(test)
     shutil.copy2(test, sim / 'test_raw_grpc_duplex.py')
     for phase in range(14):
         destination = sim / ('close-fault-' + str(phase)) / 'test_raw_grpc_duplex.py'
         destination.parent.mkdir(exist_ok=True)
         destination.write_text(replace(test.read_text(), 'FAULT_TARGET = None', 'FAULT_TARGET = ' + str(phase)))
     interleaved = root / 'sim/cocotb/test_receive_pool_interleaved.py'
-    inputs[interleaved.relative_to(root).as_posix()] = sha(interleaved)
+    inputs[source_relative(interleaved, root).as_posix()] = sha(interleaved)
     destination = sim / 'interleaved/test_raw_grpc_duplex.py'
     destination.parent.mkdir(exist_ok=True)
     shutil.copy2(interleaved, destination)
     workload = root / 'sim/cocotb/test_raw_grpc_workload.py'
-    inputs[workload.relative_to(root).as_posix()] = sha(workload)
+    inputs[source_relative(workload, root).as_posix()] = sha(workload)
     text = replace(workload.read_text(), 'import cocotb\n', 'import cocotb\nfrom receive_pool_witness import observe_receive_pool,pool_counts\n')
     text = replace(text, '    await cycles(d,5);b.set(rst=0)',
         '    pool=pool_counts();cocotb.start_soon(observe_receive_pool(d,pool))\n    await cycles(d,5);b.set(rst=0)')

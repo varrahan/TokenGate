@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 from generate_hyperram_cdc_timing_harness import ports
 from verify_two_fpga_application import closure
 
+from rtl_paths import source_path, source_relative
+
 
 def lexical(text):
     return re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"', ' ', text, flags=re.S)
@@ -85,7 +87,7 @@ def main():
     artifacts = {native / 'report.json',native / 'generation.json',Path(__file__),projects / 'report.json'}
     for name,digest in report['inputs_sha256'].items():
         path = sources / name; assert sha(path) == digest; artifacts.add(path)
-    for name,digest in generation['inputs_sha256'].items(): assert sha(root / name) == digest
+    for name,digest in generation['inputs_sha256'].items(): assert sha(source_path(root, name)) == digest
     used_generator = native / 'generate_dual_fpga_hyperram_integration.py'
     assert sha(used_generator) == generation['generator_sha256'] == report['generator_sha256']
     artifacts.add(used_generator)
@@ -142,9 +144,9 @@ def main():
             'build/validation/json-simd-decoder.json','build/validation/tokenizer-hyperram.json',
             'build/validation/parser_native_declaration_scan_20261122/report.json']
         for name in files:
-            path = replay / name; path.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(root / name,path)
+            path = replay / name; path.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(source_path(root, name),path)
         for helper in helpers:
-            path = replay / helper.relative_to(root); path.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(helper,path)
+            path = replay / source_relative(helper, root); path.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(helper,path)
         target = replay / 'tools/generate_dual_fpga_hyperram_integration.py'; shutil.copy2(used_generator,target)
         result = subprocess.run([sys.executable,str(target)],capture_output=True,text=True)
         assert result.returncode == 0,(result.stdout,result.stderr)
@@ -193,11 +195,11 @@ def main():
         joint_traffic_simulation_verified=False,joint_async_fifo_runtime_verified=False,
         global_image_grant_authority_implemented=False,full_parser_native_timing_verified=False,
         physical_interfaces_verified=False,full_system_complete=False,
-        artifacts_sha256={p.relative_to(root).as_posix():sha(p) for p in sorted(artifacts)})
+        artifacts_sha256={source_relative(p, root).as_posix():sha(p) for p in sorted(artifacts)})
     result['key'] = hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()[:16]
     evidence = root / 'build/validation/dual-fpga-hyperram-evidence' / result['key']; evidence.mkdir(parents=True)
     for path in [Path(__file__),*helpers]:
-        destination = evidence / path.relative_to(root); destination.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(path,destination)
+        destination = evidence / source_relative(path, root); destination.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(path,destination)
     output = root / 'build/validation/dual-fpga-hyperram.json'; output.write_text(json.dumps(result,indent=2)+'\n')
     shutil.copy2(output,evidence / 'verified.json')
     print(json.dumps({key:result[key] for key in ('phase','key','exact_parser_modules','exact_tokenizer_modules','joint_traffic_simulation_verified')}))
