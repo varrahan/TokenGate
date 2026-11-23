@@ -1,4 +1,5 @@
 set workspace [file dirname [file normalize [info script]]]
+source [file join $workspace scripts rtl_sources.tcl]
 set project_dir [file join $workspace Parser]
 set default_part xcsu35p-sbvb625-2-e
 if {[file exists [file join $project_dir Parser.xpr]]} {
@@ -15,7 +16,7 @@ set part [get_property PART [current_project]]
 set_property target_language Verilog [current_project]
 set_property simulator_language Mixed [current_project]
 set_property XPM_LIBRARIES {XPM_MEMORY XPM_FIFO} [current_project]
-foreach source [glob -nocomplain [file join $workspace rtl *.v]] {
+foreach source [collect_rtl [file join $workspace rtl]] {
     if {[llength [get_files -quiet [list $source]]] == 0} { add_files -norecurse [list $source] }
 }
 foreach source [glob -nocomplain [file join $workspace sim *.sv]] {
