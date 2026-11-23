@@ -1,4 +1,6 @@
 set workspace [file dirname [file dirname [file normalize [info script]]]]
+source [file join $workspace scripts rtl_sources.tcl]
+if {![file exists [file join $workspace Parser Parser.xpr]]} {source [file join $workspace create_parser.tcl]}
 open_project [file join $workspace Parser Parser.xpr]
 set part [get_property PART [current_project]]
 close_project
@@ -9,7 +11,7 @@ set report_dir [file join $workspace build implementation $part $run_name]
 file mkdir $report_dir
 set source_root [file join $report_dir sources]
 file mkdir [file join $source_root rtl]
-foreach source [glob [file join $workspace rtl *.v]] {
+foreach source [collect_rtl [file join $workspace rtl]] {
     file copy -force $source [file join $source_root rtl [file tail $source]]
 }
 file copy -force [file join $workspace build tokenizer_timing_harness.v] [file join $source_root timing_harness.v]

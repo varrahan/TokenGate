@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 import shutil
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('suite',choices=('mmio','mmio_system','http2_prefill','generated_response','rpc_response','bidirectional','two_fpga'))
@@ -14,7 +18,7 @@ def main():
     sha=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
     for name,digest in {**report['source_sha256'],**report.get('fixture_sha256',{})}.items():
         assert sha(wsl/name)==digest,('WSL input changed',name)
-        assert sha(primary/name)==digest,('Primary input changed',name)
+        assert sha(source_path(primary, name))==digest,('Primary input changed',name)
     target=primary/'build/wsl-reports'/('cocotb_'+args.suite);target.mkdir(parents=True,exist_ok=True)
     for name in('build.log','simulation.log','report.json','results.xml','acceptance.json','progress.json'):
         if(source/name).is_file():shutil.copy2(source/name,target/name)

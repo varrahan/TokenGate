@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference='Stop'
 $workspacePath=Split-Path -Parent $PSScriptRoot
 $referencePython=Join-Path $workspacePath '.venv312\Scripts\python.exe'
-& $referencePython (Join-Path $workspacePath 'tools\generate_bidirectional_application.py') --rtl (Join-Path $workspacePath 'rtl\http2_bidirectional_application.v') --harness (Join-Path $workspacePath 'sim\cocotb_bidirectional_application_top.sv')
+& $referencePython (Join-Path $workspacePath 'tools\generate_bidirectional_application.py') --rtl (Join-Path $workspacePath 'rtl\parser\top\http2_bidirectional_application.v') --harness (Join-Path $workspacePath 'sim\cocotb_bidirectional_application_top.sv')
 if($LASTEXITCODE -ne 0) { throw 'Joined interface generation failed' }
 & $referencePython (Join-Path $workspacePath 'tools\generate_two_fpga_application.py')
 if($LASTEXITCODE -ne 0) { throw 'Separate application extraction failed' }

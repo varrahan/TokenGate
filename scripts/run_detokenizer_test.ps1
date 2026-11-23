@@ -5,7 +5,7 @@ $testBuildPath = Join-Path $workspacePath 'build\detokenizer'
 New-Item -ItemType Directory -Path $testBuildPath -Force | Out-Null
 Push-Location $testBuildPath
 try {
-    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\programmable_table_ram.v') (Join-Path $workspacePath 'rtl\axis_byte_packer.v') (Join-Path $workspacePath 'rtl\detokenizer_engine.v') (Join-Path $workspacePath 'sim\tb_detokenizer.sv')
+    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\shared\memory\programmable_table_ram.v') (Join-Path $workspacePath 'rtl\shared\axis\axis_byte_packer.v') (Join-Path $workspacePath 'rtl\tokenizer\detokenizer\detokenizer_engine.v') (Join-Path $workspacePath 'sim\tb_detokenizer.sv')
     if ($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_detokenizer -L xpm -L unisims_ver -s detokenizer_test --debug typical
     if ($LASTEXITCODE -ne 0) { throw 'xelab failed' }

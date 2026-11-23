@@ -8,7 +8,7 @@ set frozen [file join $folder sources]
 file mkdir [file join $frozen rtl]
 file mkdir [file join $frozen scripts]
 foreach name {axi_hyperram_bridge hyperram_transaction_engine hyperram_startup axi_hyperram_controller} {
-    file copy [file join $workspace rtl $name.v] [file join $frozen rtl $name.v]
+    file copy [file join $workspace rtl tokenizer memory hyperram $name.v] [file join $frozen rtl $name.v]
 }
 file copy [file join $workspace scripts implement_hyperram_word_controller.tcl] [file join $frozen scripts]
 file copy [file join $workspace build ${run}-timing-harness.v] [file join $frozen timing_harness.v]

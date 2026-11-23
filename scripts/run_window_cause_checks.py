@@ -5,6 +5,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser()
@@ -34,7 +37,7 @@ def main():
             '--name',prefix+'_'+name,'--profile',profile,
             '--rtl-override',str(root/'build/experiments'/variant/'rtl'),
             '--harness-override',str(root/'build/experiments/local-cancel/sim/cocotb_two_fpga_enveloped_top.sv'),
-            '--test-override',str(root/fixture)],cwd=root,check=False)
+            '--test-override',str(source_path(root, fixture))],cwd=root,check=False)
         if result.returncode:failed.append(name)
     print(json.dumps(dict(cases=[c[0] for c in cases],failed=failed)),flush=True)
     raise SystemExit(bool(failed))

@@ -11,13 +11,16 @@ import sys
 
 from run_wsl_sv_tests import SUITES
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 SOURCES=tuple(dict.fromkeys([*SUITES['http2_hpack'][2],
     'rtl/http2_control_event_fork.v','rtl/http2_controlled_hpack_ingress.v',
     'sim/tb_http2_controlled_hpack.sv','tools/generate_controlled_hpack.py',
     'tools/generate_http2_hpack_vectors.py','tools/generate_http2_transport_vectors.py',
     'tools/generate_http2_frame_vectors.py','scripts/run_wsl_sv_tests.py',
-    'scripts/run_http2_controlled_hpack.py','build/http2-controlled-hpack/vectors.txt']))
+    'scripts/run_http2_controlled_hpack.py','tools/rtl_paths.py','build/http2-controlled-hpack/vectors.txt']))
 
 
 def sha(path):
@@ -37,7 +40,7 @@ def main():
         target.mkdir(parents=True,exist_ok=False);inputs={}
         for name in SOURCES:
             destination=target/name;destination.parent.mkdir(parents=True,exist_ok=True)
-            shutil.copy2(root/name,destination);inputs[name]=sha(destination)
+            shutil.copy2(source_path(root, name),destination);inputs[name]=sha(destination)
         (target/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
         print('Frozen controlled-HPACK integration: '+str(target),flush=True)
         completed=subprocess.run([sys.executable,str(target/'scripts/run_http2_controlled_hpack.py'),
@@ -52,15 +55,15 @@ def main():
         for name in('report.json','simulation.log','build.log'):
             if(target/'build/test'/name).is_file():shutil.copy2(target/'build/test'/name,archive/name)
         (archive/'snapshot.json').write_text(json.dumps(dict(name=args.name,exit_code=completed.returncode,
-            current_primary_changed_inputs=[name for name,digest in inputs.items()if not(root/name).is_file()or sha(root/name)!=digest],
+            current_primary_changed_inputs=[name for name,digest in inputs.items()if not(source_path(root, name)).is_file()or sha(source_path(root, name))!=digest],
             finished_utc=datetime.now(timezone.utc).isoformat()),indent=2)+'\n')
         print('Archived controlled-HPACK integration: '+str(archive),flush=True)
         raise SystemExit(completed.returncode)
     assert root.parent==Path.home()/'development/hardware/parser/build/http2-controlled-hpack-tests'
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/name)==digest for name,digest in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, name))==digest for name,digest in inputs.items())
     build=root/'build/test';build.mkdir(parents=True,exist_ok=True)
     shutil.copy2(root/'build/http2-controlled-hpack/vectors.txt',build/'vectors.txt')
-    sources=[str(root/name)for name in SOURCES if name.endswith(('.v','.sv'))]
+    sources=[str(source_path(root, name))for name in SOURCES if name.endswith(('.v','.sv'))]
     top='tb_http2_controlled_hpack'
     if args.simulator=='verilator':
         command=['verilator','--binary','--timing','--assert','-Wno-fatal','-Werror-UNOPTFLAT',
@@ -80,7 +83,7 @@ def main():
         assert result.returncode==0 and 'PASS: raw 512-bit HTTP/2' in log,log[-4000:]
         match=re.search(r'CONTROL_FORK: (\d+) exact-metadata actions/(\d+) stall cycles/(\d+) SETTINGS ACK/(\d+) PING ACK/(\d+) raw DATA begins',log)
         assert match and all(int(x)>0 for x in match.groups())
-        assert all(sha(root/name)==digest for name,digest in inputs.items())
+        assert all(sha(source_path(root, name))==digest for name,digest in inputs.items())
         assert sha(build/'vectors.txt')==inputs['build/http2-controlled-hpack/vectors.txt']
         record.update(phase='passed',flow_actions=int(match[1]),flow_stall_cycles=int(match[2]),settings_ack=int(match[3]),
             ping_ack=int(match[4]),data_frame_begins=int(match[5]),simulation_log_sha256=sha(build/'simulation.log'),

@@ -6,7 +6,7 @@ $testBuildPath=Join-Path $workspacePath 'build\pretokenizer'
 if($LASTEXITCODE -ne 0) { throw 'Pretokenizer references failed' }
 Push-Location $testBuildPath
 try {
-    $sources=@('rtl\axis_byte_unpacker.v','rtl\utf8_codepoint_reader.v','rtl\regex_splitter_fsm.v','rtl\bpe_pretokenizer.v','rtl\programmable_table_ram.v','rtl\external_memory_cache.v','rtl\external_memory_arbiter.v','rtl\external_memory_fabric.v','rtl\unicode_external_lookup.v','sim\axi_external_memory_model.sv','sim\tb_bpe_pretokenizer.sv') | ForEach-Object { Join-Path $workspacePath $_ }
+    $sources=@('rtl\shared\axis\axis_byte_unpacker.v','rtl\tokenizer\unicode\utf8_codepoint_reader.v','rtl\tokenizer\bpe\regex_splitter_fsm.v','rtl\tokenizer\bpe\bpe_pretokenizer.v','rtl\shared\memory\programmable_table_ram.v','rtl\shared\memory\external_memory_cache.v','rtl\shared\memory\external_memory_arbiter.v','rtl\shared\memory\external_memory_fabric.v','rtl\tokenizer\unicode\unicode_external_lookup.v','sim\axi_external_memory_model.sv','sim\tb_bpe_pretokenizer.sv') | ForEach-Object { Join-Path $workspacePath $_ }
     & (Join-Path $vivadoBinPath 'xvlog.bat') --sv @sources
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_bpe_pretokenizer -L xpm -L unisims_ver -s pretokenizer_test --debug typical

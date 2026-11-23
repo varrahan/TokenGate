@@ -5,6 +5,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -18,9 +21,9 @@ def main():
     for phase in args.phases:
         subprocess.run([sys.executable, str(root / 'scripts/run_raw_envelope_tests.py'),
             '--name', args.name_prefix + '_' + str(phase), '--profile', 'duplex',
-            '--rtl-override', str(root / args.rtl_override),
+            '--rtl-override', str(source_path(root, args.rtl_override)),
             '--harness-override', str(root / 'build/experiments/local-cancel/sim/cocotb_two_fpga_enveloped_top.sv'),
-            '--test-override', str(root / ('build/experiments/local-cancel/sim/close-fault-' + str(phase) + '/test_raw_grpc_duplex.py'))],
+            '--test-override', str(source_path(root, 'build/experiments/local-cancel/sim/close-fault-' + str(phase) + '/test_raw_grpc_duplex.py'))],
             check=True, cwd=root)
 
 

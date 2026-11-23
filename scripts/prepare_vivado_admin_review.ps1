@@ -45,7 +45,7 @@ $record=[ordered]@{
 New-Item -ItemType Directory -Path $outputPath | Out-Null
 $record | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $outputPath 'request.json') -Encoding utf8
 [ordered]@{event_id=$blockedEvent.Id;record_id=$blockedEvent.RecordId;created_utc=$blockedEvent.TimeCreated.ToUniversalTime().ToString('o');process_id=$eventXml.Event.System.Execution.ProcessID;fields=$selectedData} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $outputPath 'code-integrity-event.json') -Encoding utf8
-Copy-Item -LiteralPath (Join-Path $workspacePath 'docs\vivado-administrator-review.rst') -Destination (Join-Path $outputPath 'administrator-request.rst')
+Copy-Item -LiteralPath (Join-Path $workspacePath 'docs\development.md') -Destination (Join-Path $outputPath 'administrator-request.md')
 Copy-Item -LiteralPath (Join-Path $workspacePath 'build\parser_fpga_au15p_logical_partition_tx_witness-implementation.log') -Destination (Join-Path $outputPath 'parser-build.log')
 Copy-Item -LiteralPath (Join-Path $workspacePath 'hs_err_pid21880.log') -Destination (Join-Path $outputPath 'parser-crash.log')
 Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $outputPath 'prepare_vivado_admin_review.ps1')

@@ -5,7 +5,7 @@ $testBuildPath=Join-Path $workspacePath 'build\external-cache'
 New-Item -ItemType Directory -Path $testBuildPath -Force | Out-Null
 Push-Location $testBuildPath
 try {
-    $sources=@('rtl\programmable_table_ram.v','rtl\external_memory_cache.v','sim\tb_external_memory_cache.sv') | ForEach-Object { Join-Path $workspacePath $_ }
+    $sources=@('rtl\shared\memory\programmable_table_ram.v','rtl\shared\memory\external_memory_cache.v','sim\tb_external_memory_cache.sv') | ForEach-Object { Join-Path $workspacePath $_ }
     & (Join-Path $vivadoBinPath 'xvlog.bat') --sv @sources
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_external_memory_cache -L xpm -L unisims_ver -s external_cache_test --debug typical

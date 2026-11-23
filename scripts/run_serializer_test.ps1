@@ -6,7 +6,7 @@ $testBuildPath=Join-Path $workspacePath 'build\serializer'
 if($LASTEXITCODE -ne 0) { throw 'Serializer reference generation failed' }
 Push-Location $testBuildPath
 try {
-    $sources=@('rtl\axis_byte_unpacker.v','rtl\axis_byte_packer.v','rtl\json_escape_encoder.v','rtl\proto_json_serializer.v','sim\tb_serializer.sv') | ForEach-Object { Join-Path $workspacePath $_ }
+    $sources=@('rtl\shared\axis\axis_byte_unpacker.v','rtl\shared\axis\axis_byte_packer.v','rtl\parser\response\json_escape_encoder.v','rtl\parser\response\proto_json_serializer.v','sim\tb_serializer.sv') | ForEach-Object { Join-Path $workspacePath $_ }
     & (Join-Path $vivadoBinPath 'xvlog.bat') --sv @sources
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_serializer -s serializer_test --debug typical

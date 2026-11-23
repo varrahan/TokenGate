@@ -1,4 +1,6 @@
 set workspace [file dirname [file dirname [file normalize [info script]]]]
+source [file join $workspace scripts rtl_sources.tcl]
+if {![file exists [file join $workspace Parser Parser.xpr]]} {source [file join $workspace create_parser.tcl]}
 open_project [file join $workspace Parser Parser.xpr]
 set part [get_property PART [current_project]]
 close_project
@@ -7,7 +9,7 @@ file mkdir $report_dir
 set_param general.maxThreads 4
 create_project -in_memory -part $part
 set_property XPM_LIBRARIES {XPM_MEMORY XPM_FIFO} [current_project]
-read_verilog [glob [file join $workspace rtl *.v]]
+read_verilog [collect_rtl [file join $workspace rtl]]
 read_verilog [list [file join $workspace build parser_timing_harness.v]]
 read_xdc [list [file join $workspace constraints parser.xdc]]
 synth_design -top parser_timing_harness -part $part -mode out_of_context

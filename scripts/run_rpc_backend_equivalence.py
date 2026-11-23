@@ -9,6 +9,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 TOP = 'rpc_http2_response_partition'
 SLOT_HELPERS = [('output', '[1:0]', 'formal_slot_state'),
@@ -45,7 +48,7 @@ endmodule
 
 def prove_address_cone(root, inputs, sha):
     folder = root / 'build/proof'; folder.mkdir(parents=True, exist_ok=True)
-    generated = address_models((root / 'rtl/gold_input.v').read_text(), (root / 'rtl/gate_input.v').read_text())
+    generated = address_models((source_path(root, 'rtl/gold_input.v')).read_text(), (source_path(root, 'rtl/gate_input.v')).read_text())
     for n, text in generated.items(): (folder / n).write_text(text)
     report = dict(phase='running', proof_engine='algebra', input_sha256=inputs,
         started_utc=datetime.now(timezone.utc).isoformat(), memory_address_width=23,
@@ -58,7 +61,7 @@ def prove_address_cone(root, inputs, sha):
             result = subprocess.run(['yosys', '-T', '-s', 'proof.ys'], cwd=folder, stdout=output, stderr=subprocess.STDOUT, check=False)
         report['yosys_exit_code'] = result.returncode
         assert result.returncode == 0 and 'SAT proof finished - no model found: SUCCESS!' in (folder / 'yosys.log').read_text()
-        assert all(sha(root / n) == h for n, h in inputs.items())
+        assert all(sha(source_path(root, n)) == h for n, h in inputs.items())
         report.update(phase='passed', actual_address_comparison_equivalence_verified=True,
             physical_timing_verified=False, full_system_complete=False)
     except BaseException as error:
@@ -97,11 +100,11 @@ def main():
         assert approved.is_dir() and root != approved
         target = approved / 'build/rpc-backend-equivalence' / args.name
         target.mkdir(parents=True, exist_ok=False)
-        sources = {'rtl/gold_input.v': root / 'rtl' / (TOP + '.v'),
+        sources = {'rtl/gold_input.v': source_path(root, Path('rtl') / (TOP + '.v')),
             'rtl/gate_input.v': root / 'build/experiments/checked-close-address/rtl' / (TOP + '.v')}
         for n in ('rtl/memory_command_slot.v', 'scripts/run_rpc_backend_equivalence.py',
-                  'tools/generate_bidirectional_application.py', 'tools/generate_two_fpga_application.py'):
-            sources[n] = root / n
+                  'tools/generate_bidirectional_application.py', 'tools/generate_two_fpga_application.py', 'tools/rtl_paths.py'):
+            sources[n] = source_path(root, n)
         inputs = {}
         for n, p in sources.items():
             destination = target / n; destination.parent.mkdir(parents=True, exist_ok=True)
@@ -124,14 +127,14 @@ def main():
         raise SystemExit(result.returncode)
     assert root.parent == Path.home() / 'development/hardware/parser/build/rpc-backend-equivalence'
     inputs = json.loads((root / 'inputs.json').read_text())
-    assert all(sha(root / n) == h for n, h in inputs.items())
+    assert all(sha(source_path(root, n)) == h for n, h in inputs.items())
     if args.engine == 'algebra':
         prove_address_cone(root, inputs, sha)
         return
     sys.path.insert(0, str(root / 'tools'))
     from generate_bidirectional_application import ports
     from generate_two_fpga_application import add_ports, rename
-    original = (root / 'rtl/gold_input.v').read_text(); gate = (root / 'rtl/gate_input.v').read_text()
+    original = (source_path(root, 'rtl/gold_input.v')).read_text(); gate = (source_path(root, 'rtl/gate_input.v')).read_text()
     public = ports(original, TOP); assert public == ports(gate, TOP)
     private = private_registers(original, {n for _, _, n in public})
     assert private == private_registers(gate, {n for _, _, n in public})
@@ -150,7 +153,7 @@ def main():
         assert source.count('endmodule') == 1
         source = source.replace('endmodule', '\n'.join(assignments) + '\nendmodule')
         (folder / (name + '.v')).write_text(rename(source, TOP, 'backend_' + name))
-    slot = add_ports((root / 'rtl/memory_command_slot.v').read_text(), 'memory_command_slot', [('output', '[1:0]', 'formal_state')])
+    slot = add_ports((source_path(root, 'rtl/memory_command_slot.v')).read_text(), 'memory_command_slot', [('output', '[1:0]', 'formal_state')])
     slot = slot.replace('endmodule', 'assign formal_state=state;\nendmodule')
     (folder / 'memory_command_slot.v').write_text(slot)
     lines = ['`default_nettype none', 'module backend_equivalence #(parameter USER_WIDTH=16,MEMORY_ADDR_WIDTH=23,MAX_TEXT_BYTES=16384)(',
@@ -200,7 +203,7 @@ def main():
                 report[name + '_exit_code'] = checked.returncode
                 assert checked.returncode == 0 and 'Status: PASSED' in (folder / (name + '.log')).read_text()
             report['smtbmc_commands'] = commands
-        assert all(sha(root / n) == h for n, h in inputs.items())
+        assert all(sha(source_path(root, n)) == h for n, h in inputs.items())
         report.update(phase='passed', unbounded_post_reset_public_output_equivalence=True,
             physical_timing_verified=False, full_system_complete=False)
     except BaseException as error:

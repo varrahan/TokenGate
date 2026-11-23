@@ -9,6 +9,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 SCOPE=('context_base','context_bytes','window_base','window_bytes','work_floor')
 EVENTS=(r'if\(([^()]*)\)begin\s*(?:held_credit_\w+<=0;\s*)*saved_frame_cfg_context_base<=cfg_context_base;',
@@ -56,9 +59,10 @@ def main():
         assert args.name and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*',args.name)
         approved=Path.home()/'development/hardware/parser';assert approved.is_dir()and root!=approved
         target=approved/'build/closed-scope-equivalence'/args.name;target.mkdir(parents=True,exist_ok=False)
-        sources={'rtl/gold_input.v':root/'rtl/rpc_grpc_http2_return.v',
+        sources={'rtl/gold_input.v':source_path(root, 'rtl/rpc_grpc_http2_return.v'),
             'rtl/gate_input.v':root/'build/experiments/registered-close-scope/rtl/rpc_grpc_http2_return.v',
-            'scripts/run_closed_scope_equivalence.py':Path(__file__)};inputs={}
+            'scripts/run_closed_scope_equivalence.py':Path(__file__),
+            'tools/rtl_paths.py':root/'tools/rtl_paths.py'};inputs={}
         for n,p in sources.items():
             destination=target/n;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,destination);inputs[n]=sha(destination)
         (target/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n');print('Frozen actual close-scope cone: '+str(target),flush=True)
@@ -73,10 +77,10 @@ def main():
         (archive/'snapshot.json').write_text(json.dumps(dict(exit_code=result.returncode,finished_utc=datetime.now(timezone.utc).isoformat()),indent=2)+'\n')
         print('Archived close-scope proof: '+str(archive),flush=True);raise SystemExit(result.returncode)
     assert root.parent==Path.home()/'development/hardware/parser/build/closed-scope-equivalence'
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/n)==h for n,h in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     folder=root/'build/proof';folder.mkdir(parents=True,exist_ok=True);definitions=[]
     for name in('gold','gate'):
-        text,public,conditions=model((root/f'rtl/{name}_input.v').read_text(),name);(folder/(name+'.v')).write_text(text);definitions.append((public,conditions))
+        text,public,conditions=model((source_path(root, f'rtl/{name}_input.v')).read_text(),name);(folder/(name+'.v')).write_text(text);definitions.append((public,conditions))
     assert definitions[0]==definitions[1]
     public,conditions=definitions[0]
     lines=['module scope_equivalence #(parameter MEMORY_ADDR_WIDTH=23)(',',\n'.join('input wire '+w+' '+n for w,n in public),');',
@@ -96,7 +100,7 @@ def main():
         with(folder/'yosys.log').open('w')as output:result=subprocess.run(['yosys','-T','-s','proof.ys'],cwd=folder,stdout=output,stderr=subprocess.STDOUT,check=False)
         report['yosys_exit_code']=result.returncode
         assert result.returncode==0 and 'Induction step proven: SUCCESS!'in(folder/'yosys.log').read_text()
-        assert all(sha(root/n)==h for n,h in inputs.items())
+        assert all(sha(source_path(root, n))==h for n,h in inputs.items())
         report.update(phase='passed',unbounded_post_reset_scope_comparison_equivalence=True,simultaneous_capture_events_unconstrained=True,
             whole_module_equivalence_verified=False,physical_timing_verified=False,full_system_complete=False)
     except BaseException as error:report.update(phase='failed',error=str(error));raise

@@ -5,7 +5,7 @@ $testBuildPath=Join-Path $workspacePath 'build\memory-arbiter'
 New-Item -ItemType Directory -Path $testBuildPath -Force | Out-Null
 Push-Location $testBuildPath
 try {
-    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\external_memory_arbiter.v') (Join-Path $workspacePath 'sim\tb_external_memory_arbiter.sv')
+    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\shared\memory\external_memory_arbiter.v') (Join-Path $workspacePath 'sim\tb_external_memory_arbiter.sv')
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_external_memory_arbiter -s memory_arbiter_test --debug typical
     if($LASTEXITCODE -ne 0) { throw 'xelab failed' }

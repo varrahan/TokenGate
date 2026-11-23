@@ -20,7 +20,9 @@ $executionMode=if($SynthesisOnly) {'synthesis'} elseif($ResumeSynthesis) {'resum
 $harnessTop=$Top+'_timing_harness'
 $harnessFile=Join-Path $workspacePath ('build\'+$RunName+'-timing-harness.v')
 if(-not $ResumeSynthesis -and -not $ResumePlacement) {
-    $timingSource=Join-Path $workspacePath ('rtl\'+$Top+'.v')
+    $matchingSources=@(Get-ChildItem -LiteralPath (Join-Path $workspacePath 'rtl') -Filter ($Top+'.v') -Recurse -File)
+    if($matchingSources.Count -ne 1) { throw 'Expected exactly one RTL source for the selected top' }
+    $timingSource=$matchingSources[0].FullName
     if($RtlOverride) {
         $overrideItem=Get-Item -LiteralPath $RtlOverride
         $overrideTop=if($overrideItem.PSIsContainer) {Join-Path $overrideItem.FullName ($Top+'.v')} else {$overrideItem.FullName}

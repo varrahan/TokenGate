@@ -6,7 +6,7 @@ $testBuildPath=Join-Path $workspacePath 'build\json-parser'
 if($LASTEXITCODE -ne 0) { throw 'JSON reference generation failed' }
 Push-Location $testBuildPath
 try {
-    $sources=@('rtl\json_string_normalizer.v','rtl\schema_cam_lut.v','rtl\speculative_json_fsm.v','sim\tb_json_parser.sv') | ForEach-Object { Join-Path $workspacePath $_ }
+    $sources=@('rtl\parser\decoder\json\json_string_normalizer.v','rtl\parser\decoder\schema\schema_cam_lut.v','rtl\parser\decoder\json\speculative_json_fsm.v','sim\tb_json_parser.sv') | ForEach-Object { Join-Path $workspacePath $_ }
     & (Join-Path $vivadoBinPath 'xvlog.bat') --sv @sources
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_json_parser -s json_parser_test --debug typical

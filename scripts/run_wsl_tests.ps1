@@ -140,7 +140,7 @@ if($Suites -contains 'hpack_string') {
     $fixtureArguments+=@('--fixture','hpack-string')
 }
 if($Suites -contains 'hpack_static') {
-    & $referencePython (Join-Path $workspacePath 'tools\generate_hpack_static_table.py') --rtl (Join-Path $workspacePath 'rtl\hpack_static_table.v') --output (Join-Path $workspacePath 'build\hpack-static')
+    & $referencePython (Join-Path $workspacePath 'tools\generate_hpack_static_table.py') --rtl (Join-Path $workspacePath 'rtl\parser\transport\hpack\hpack_static_table.v') --output (Join-Path $workspacePath 'build\hpack-static')
     if($LASTEXITCODE -ne 0) { throw 'HPACK static table generation failed' }
     $fixtureArguments+=@('--fixture','hpack-static')
 }

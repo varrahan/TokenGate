@@ -9,6 +9,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 SCOPE = ('context_base', 'context_bytes', 'stream_base', 'stream_bytes', 'window_base', 'window_bytes', 'work_floor')
 
@@ -56,7 +59,8 @@ def main():
         target = approved / 'build/envelope-scope-equivalence' / args.name; target.mkdir(parents=True, exist_ok=False)
         paths = {'rtl/gold_input.v': root / 'build/experiments/context-commit-guard/rtl/rpc_grpc_http2_return.v',
                  'rtl/gate_input.v': root / 'build/experiments/registered-envelope-scope/rtl/rpc_grpc_http2_return.v',
-                 'scripts/run_envelope_scope_equivalence.py': Path(__file__)}; inputs = {}
+                 'scripts/run_envelope_scope_equivalence.py': Path(__file__),
+                 'tools/rtl_paths.py': root / 'tools/rtl_paths.py'}; inputs = {}
         for n, p in paths.items():
             q = target / n; q.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(p, q); inputs[n] = sha(q)
         (target / 'inputs.json').write_text(json.dumps(inputs, indent=2) + '\n')
@@ -72,7 +76,7 @@ def main():
         (archive / 'snapshot.json').write_text(json.dumps(dict(exit_code=result.returncode, finished_utc=datetime.now(timezone.utc).isoformat()), indent=2) + '\n')
         print('Archived envelope scope: ' + str(archive), flush=True); raise SystemExit(result.returncode)
     assert root.parent == Path.home() / 'development/hardware/parser/build/envelope-scope-equivalence'
-    inputs = json.loads((root / 'inputs.json').read_text()); assert all(sha(root / n) == h for n, h in inputs.items())
+    inputs = json.loads((root / 'inputs.json').read_text()); assert all(sha(source_path(root, n)) == h for n, h in inputs.items())
     folder = root / 'build/proof'; folder.mkdir(parents=True, exist_ok=True)
     report = dict(phase='running', input_sha256=inputs, started_utc=datetime.now(timezone.utc).isoformat(),
         only_environment_assumption='reset on initial sampled clock; later captures, retire and scope fields unconstrained',
@@ -81,7 +85,7 @@ def main():
     try:
         ports = []
         for label in ('gold', 'gate'):
-            text, public = model((root / 'rtl' / (label + '_input.v')).read_text(), label)
+            text, public = model((source_path(root, Path('rtl') / (label + '_input.v'))).read_text(), label)
             (folder / (label + '.v')).write_text(text); ports.append(public)
         assert ports[0] == ports[1]; public = ports[0]
         lines = ['module envelope_equivalence #(parameter USER_WIDTH=16,MEMORY_ADDR_WIDTH=23)(',
@@ -98,7 +102,7 @@ def main():
             result = subprocess.run(['yosys', '-T', '-s', 'proof.ys'], cwd=folder, stdout=output, stderr=subprocess.STDOUT, check=False)
         report['yosys_exit_code'] = result.returncode
         assert result.returncode == 0 and 'Induction step proven: SUCCESS!' in (folder / 'yosys.log').read_text()
-        assert all(sha(root / n) == h for n, h in inputs.items())
+        assert all(sha(source_path(root, n)) == h for n, h in inputs.items())
         report.update(phase='passed', unbounded_post_reset_saved_scope_equivalence=True, simultaneous_captures_and_retirement_unconstrained=True)
     except BaseException as error: report.update(phase='failed', error=str(error)); raise
     finally:

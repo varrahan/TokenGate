@@ -8,6 +8,10 @@ import subprocess
 
 from run_wsl_sv_tests import SUITES
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -25,7 +29,7 @@ def main():
     # Each simulator/suite gets an immutable source/fixture snapshot and logs.
     isolated = target / (args.suite + '-' + args.simulator)
     isolated.mkdir(parents=True, exist_ok=False)
-    files = [(root / name, Path(name)) for name in source_names]
+    files = [(source_path(root, name), Path(name)) for name in source_names]
     files.append((root / 'scripts/run_wsl_sv_tests.py', Path('scripts/run_wsl_sv_tests.py')))
     files.extend((path, Path('build') / fixture / path.name) for path in (root / 'build' / fixture).iterdir()
                  if path.is_file() and path.suffix in ('.mem', '.txt', '.bin', '.json') and not path.name.endswith('-report.json'))

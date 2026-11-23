@@ -1,4 +1,5 @@
 set workspace [file dirname [file dirname [file normalize [info script]]]]
+if {![file exists [file join $workspace Parser Parser.xpr]]} {source [file join $workspace create_parser.tcl]}
 open_project [file join $workspace Parser Parser.xpr]
 puts "PROJECT_SIM_PART=[get_property PART [current_project]]"
 set fixture [get_files -quiet [list [file join $workspace sim data decoder_vectors.mem]]]

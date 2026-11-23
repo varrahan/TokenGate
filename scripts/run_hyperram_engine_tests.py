@@ -9,6 +9,9 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name');parser.add_argument('--execute',action='store_true')
@@ -23,13 +26,13 @@ def main():
         approved=Path.home()/'development/hardware/parser';assert approved.is_dir()and root!=approved
         target=approved/'build/hyperram-engine-tests'/args.name;target.mkdir(parents=True,exist_ok=False)
         names=['rtl/hyperram_transaction_engine.v','sim/cocotb/hyperram_word_model.py',
-            'scripts/run_hyperram_engine_tests.py','build/scu35/image/external_memory.bin']
+            'scripts/run_hyperram_engine_tests.py','build/scu35/image/external_memory.bin', 'tools/rtl_paths.py']
         names+=['sim/cocotb/test_hyperram_transaction_engine.py']if args.profile=='engine'else[
             'rtl/axi_hyperram_bridge.v','sim/cocotb_axi_hyperram_engine_top.sv',
             'sim/cocotb/test_axi_hyperram_engine.py','sim/cocotb/test_axi_hyperram_bridge.py']
         inputs={}
         for n in names:
-            p=target/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/n,p);inputs[n]=sha(p)
+            p=target/n;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, n),p);inputs[n]=sha(p)
         (target/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
         print('Frozen HyperBus word engine: '+str(target),flush=True)
         result=subprocess.run([sys.executable,str(target/'scripts/run_hyperram_engine_tests.py'),'--execute','--profile',args.profile,
@@ -44,13 +47,13 @@ def main():
         (archive/'snapshot.json').write_text(json.dumps(dict(name=args.name,exit_code=result.returncode,
             finished_utc=datetime.now(timezone.utc).isoformat()),indent=2)+'\n')
         print('Archived HyperBus word engine: '+str(archive),flush=True);raise SystemExit(result.returncode)
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/n)==h for n,h in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     from cocotb_tools.runner import get_runner
     sys.path.insert(0,str(root/'sim/cocotb'));build=root/'build/test';build.mkdir(parents=True,exist_ok=True)
     runner=get_runner('icarus');report=dict(phase='building',profile=args.profile,clock_hz=args.clock_hz,input_sha256=inputs,started_utc=datetime.now(timezone.utc).isoformat())
     top='hyperram_transaction_engine'if args.profile=='engine'else'cocotb_axi_hyperram_engine_top'
     test='test_hyperram_transaction_engine'if args.profile=='engine'else'test_axi_hyperram_engine'
-    sources=[root/n for n in inputs if n.endswith(('.v','.sv'))]
+    sources=[source_path(root, n) for n in inputs if n.endswith(('.v','.sv'))]
     try:
         runner.build(sources=sources,hdl_toplevel=top,parameters={'MEMORY_CLOCK_HZ':args.clock_hz},
             build_dir=build,always=True,log_file=build/'build.log')

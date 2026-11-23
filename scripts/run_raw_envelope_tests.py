@@ -12,6 +12,9 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path, source_relative
+
 
 def freeze_model_image(source,destination,approved):
     """Share verified, read-only fixture bytes on one build filesystem."""
@@ -51,7 +54,7 @@ def main():
             raise SystemExit(75)
         approved=Path.home()/'development/hardware/parser';assert approved.is_dir()and root!=approved
         target=approved/'build/raw-envelope-tests'/args.name;target.mkdir(parents=True,exist_ok=False)
-        sources=[p for folder in('rtl','sim','tools','scripts')for p in(root/folder).rglob('*')
+        sources=[p for folder in('rtl','sim','tools','scripts')for p in(source_path(root, folder)).rglob('*')
             if p.is_file()and not p.is_symlink()and '__pycache__'not in p.parts and p.suffix in('.py','.v','.sv')]
         sources +=[p for p in(root/'build/bidirectional-fixtures').iterdir()if p.is_file()]
         sources +=[root/'build/bidirectional-reference-validation.json'];inputs={};overrides={}
@@ -59,7 +62,7 @@ def main():
             selected=args.rtl_override.resolve();paths=sorted(selected.glob('*.v'))if selected.is_dir()else[selected]
             assert paths
             for p in paths:
-                assert p.is_file()and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*\.v',p.name)and(root/'rtl'/p.name).is_file()
+                assert p.is_file()and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*\.v',p.name)and(source_path(root, Path('rtl') / (p.name))).is_file()
                 overrides['rtl/'+p.name]=p
         if args.harness_override:
             selected=args.harness_override.resolve()
@@ -70,7 +73,7 @@ def main():
             assert selected.is_file() and selected.suffix=='.py' and (root/'sim/cocotb'/selected.name).is_file()
             overrides['sim/cocotb/'+selected.name]=selected
         for source in sources:
-            n=source.relative_to(root).as_posix();p=target/n;p.parent.mkdir(parents=True,exist_ok=True)
+            n=source_relative(source, root).as_posix();p=target/n;p.parent.mkdir(parents=True,exist_ok=True)
             selected=overrides.get(n,source)
             if n=='build/bidirectional-fixtures/memory.mem':freeze_model_image(selected,p,approved)
             else:shutil.copy2(selected,p)
@@ -96,15 +99,15 @@ def main():
             if(target/'build/test'/n).is_file():shutil.copy2(target/'build/test'/n,archive/n)
         (archive/'snapshot.json').write_text(json.dumps(dict(name=args.name,profile=args.profile,exit_code=result.returncode,finished_utc=datetime.now(timezone.utc).isoformat(),
             isolated_rtl_overrides={n:str(p)for n,p in overrides.items()},
-            current_primary_changed_inputs=[n for n,h in inputs.items()if not n.startswith('native-vendor/')and(not(root/n).is_file()or sha(root/n)!=h)]),indent=2)+'\n')
+            current_primary_changed_inputs=[n for n,h in inputs.items()if not n.startswith('native-vendor/')and(not(source_path(root, n)).is_file()or sha(source_path(root, n))!=h)]),indent=2)+'\n')
         print('Archived actual raw envelopes: '+str(archive),flush=True);raise SystemExit(result.returncode)
     assert root.parent==Path.home()/'development/hardware/parser/build/raw-envelope-tests'
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/n)==h for n,h in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     from cocotb_tools.runner import get_runner
     sys.path.insert(0,str(root/'sim/cocotb'));build=root/'build/test';build.mkdir(parents=True,exist_ok=True);runner=get_runner('icarus')
     report=dict(phase='building',profile=args.profile,input_sha256=inputs,started_utc=datetime.now(timezone.utc).isoformat())
     try:
-        runner.build(sources=[root/n for n in inputs if n.startswith('rtl/')and n.endswith('.v')]+[root/'sim/cocotb_two_fpga_enveloped_top.sv'],
+        runner.build(sources=[source_path(root, n) for n in inputs if n.startswith('rtl/')and n.endswith('.v')]+[root/'sim/cocotb_two_fpga_enveloped_top.sv'],
             hdl_toplevel='cocotb_two_fpga_enveloped_top',defines={'PARSER_PORTABLE_SIM':1},build_dir=build,always=True,log_file=build/'build.log')
         report['phase']='running'
         test_module={'native':'test_raw_grpc_enveloped','shutdown-faults':'test_raw_shutdown_faults',
@@ -114,7 +117,7 @@ def main():
             results_xml=build/'results.xml',seed=20261121,extra_env={'PARSER_BIDIRECTIONAL_FIXTURES':str(root/'build/bidirectional-fixtures')},log_file=build/'simulation.log')
         xml=ET.parse(build/'results.xml');assert len(xml.findall('.//testcase'))==1 and not xml.findall('.//failure')and not xml.findall('.//error')
         assert json.loads((build/'acceptance.json').read_text())['phase']=='passed'
-        assert all(sha(root/n)==h for n,h in inputs.items())
+        assert all(sha(source_path(root, n))==h for n,h in inputs.items())
         report.update(phase='passed',tests=1,failures=0,acceptance_sha256=sha(build/'acceptance.json'))
     except BaseException as error:report.update(phase='failed',error=str(error));raise
     finally:

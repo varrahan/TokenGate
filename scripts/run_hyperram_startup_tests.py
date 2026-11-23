@@ -9,6 +9,9 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name');parser.add_argument('--execute',action='store_true')
@@ -23,10 +26,10 @@ def main():
         target=approved/'build/hyperram-startup-tests'/args.name;target.mkdir(parents=True,exist_ok=False)
         names=['rtl/'+n+'.v'for n in('axi_hyperram_bridge','hyperram_transaction_engine','hyperram_startup','axi_hyperram_controller')]
         names+=['sim/cocotb/'+n+'.py'for n in('hyperram_word_model','test_axi_hyperram_bridge','test_hyperram_startup')]
-        names+=['scripts/run_hyperram_startup_tests.py','build/scu35/image/external_memory.bin']
+        names+=['scripts/run_hyperram_startup_tests.py','build/scu35/image/external_memory.bin', 'tools/rtl_paths.py']
         inputs={}
         for name in names:
-            p=target/name;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/name,p);inputs[name]=sha(p)
+            p=target/name;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path(root, name),p);inputs[name]=sha(p)
         (target/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
         print('Frozen HyperRAM startup: '+str(target),flush=True)
         result=subprocess.run([sys.executable,str(target/'scripts/run_hyperram_startup_tests.py'),'--execute',
@@ -41,13 +44,13 @@ def main():
         (archive/'snapshot.json').write_text(json.dumps(dict(name=args.name,exit_code=result.returncode,
             finished_utc=datetime.now(timezone.utc).isoformat()),indent=2)+'\n')
         print('Archived HyperRAM startup: '+str(archive),flush=True);raise SystemExit(result.returncode)
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/n)==h for n,h in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     from cocotb_tools.runner import get_runner
     sys.path.insert(0,str(root/'sim/cocotb'));build=root/'build/test';build.mkdir(parents=True,exist_ok=True)
     runner=get_runner('icarus');report=dict(phase='building',input_sha256=inputs,
         clock_hz=args.clock_hz,latency=args.latency,fixed=args.fixed,started_utc=datetime.now(timezone.utc).isoformat())
     try:
-        runner.build(sources=[root/n for n in inputs if n.endswith('.v')],hdl_toplevel='axi_hyperram_controller',
+        runner.build(sources=[source_path(root, n) for n in inputs if n.endswith('.v')],hdl_toplevel='axi_hyperram_controller',
             parameters={'MEMORY_CLOCK_HZ':args.clock_hz,'CONFIG_LATENCY':args.latency,'FIXED_LATENCY':args.fixed},
             build_dir=build,always=True,log_file=build/'build.log')
         report['phase']='running'

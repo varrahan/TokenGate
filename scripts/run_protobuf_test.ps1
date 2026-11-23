@@ -6,7 +6,7 @@ $testBuildPath=Join-Path $workspacePath 'build\protobuf'
 if($LASTEXITCODE -ne 0) { throw 'Protobuf reference generation failed' }
 Push-Location $testBuildPath
 try {
-    $sources=@('rtl\utf8_byte_validator.v','rtl\protobuf_varint_decoder.v','rtl\protobuf_wire_fsm.v','sim\tb_protobuf_wire.sv') | ForEach-Object { Join-Path $workspacePath $_ }
+    $sources=@('rtl\parser\decoder\utf8_byte_validator.v','rtl\parser\decoder\protobuf\protobuf_varint_decoder.v','rtl\parser\decoder\protobuf\protobuf_wire_fsm.v','sim\tb_protobuf_wire.sv') | ForEach-Object { Join-Path $workspacePath $_ }
     & (Join-Path $vivadoBinPath 'xvlog.bat') --sv @sources
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_protobuf_wire -s protobuf_test --debug typical

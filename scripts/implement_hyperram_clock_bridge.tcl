@@ -7,8 +7,8 @@ if {[file exists $folder]} {error "Preserve existing native evidence"}
 set frozen [file join $folder sources]
 file mkdir [file join $frozen rtl]
 file mkdir [file join $frozen scripts]
-foreach name {cdc_packet_fifo hyperram_clock_bridge} {
-    file copy [file join $workspace rtl $name.v] [file join $frozen rtl $name.v]
+foreach relative {shared/link/cdc_packet_fifo.v tokenizer/memory/hyperram/hyperram_clock_bridge.v} {
+    file copy [file join $workspace rtl $relative] [file join $frozen rtl [file tail $relative]]
 }
 if {[llength $argv]==2} {
     set isolated_fifo [file normalize [lindex $argv 1]]

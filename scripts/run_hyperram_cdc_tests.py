@@ -10,6 +10,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name');parser.add_argument('--execute',action='store_true');args=parser.parse_args()
@@ -20,7 +23,7 @@ def main():
         if shutil.disk_usage(root).free<512*1024*1024:raise SystemExit(75)
         approved=Path.home()/'development/hardware/parser';assert approved.is_dir()and root!=approved
         target=approved/'build/hyperram-cdc-tests'/args.name;target.mkdir(parents=True,exist_ok=False)
-        original={n:root/n for n in('rtl/cdc_packet_fifo.v','rtl/hyperram_clock_bridge.v','sim/tb_hyperram_clock_bridge.sv','scripts/run_hyperram_cdc_tests.py')}
+        original={n:source_path(root, n) for n in('rtl/cdc_packet_fifo.v','rtl/hyperram_clock_bridge.v','sim/tb_hyperram_clock_bridge.sv','scripts/run_hyperram_cdc_tests.py', 'tools/rtl_paths.py')}
         installed=Path('/mnt/c/AMDDesignTools/2025.2/Vivado/data/ip/xpm')
         for n in('cdc','memory','fifo'):original['vendor/xpm_'+n+'.sv']=installed/('xpm_'+n)/'hdl'/('xpm_'+n+'.sv')
         inputs={}
@@ -40,9 +43,9 @@ def main():
             finished_utc=datetime.now(timezone.utc).isoformat()),indent=2)+'\n')
         print('Archived native-XPM HyperRAM CDC: '+str(archive),flush=True);raise SystemExit(result.returncode)
     inputs=json.loads((root/'inputs.json').read_text());assert len(inputs)==7
-    assert all(sha(root/n)==h for n,h in inputs.items())
+    assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     folder=root/'build/test';folder.mkdir(parents=True,exist_ok=True)
-    sources=[str(root/n)for n in inputs if n.endswith(('.v','.sv'))]
+    sources=[str(source_path(root, n))for n in inputs if n.endswith(('.v','.sv'))]
     common=['verilator','--timing','--assert','--bbox-unsup','-DOBSOLETE','-DONESPIN','-Wno-fatal',
         '--top-module','tb_hyperram_clock_bridge']
     report=dict(phase='building',input_sha256=inputs,started_utc=datetime.now(timezone.utc).isoformat(),

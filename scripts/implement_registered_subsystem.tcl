@@ -1,4 +1,5 @@
 set workspace [file dirname [file dirname [file normalize [info script]]]]
+source [file join $workspace scripts rtl_sources.tcl]
 if {[llength $argv]<2 || [llength $argv]>7} {error "Expected module top, unique run name, optional execution mode, synthesis directive, experimental part, isolated RTL override and thread limit"}
 set top [lindex $argv 0]
 set run_name [lindex $argv 1]
@@ -11,6 +12,7 @@ if {$execution_mode ni {implementation synthesis resume placement route-placemen
 if {$execution_mode in {resume route-placement} && $synthesis_directive ne "Default"} {error "Resume uses the existing checkpoint; synthesis options cannot be changed"}
 if {![regexp {^[A-Za-z_][A-Za-z0-9_]*$} $top] || ![regexp {^[A-Za-z0-9_-]+$} $run_name]} {error "Invalid implementation name"}
 # Read the saved device without acquiring the project already open in the GUI.
+if {![file exists [file join $workspace Parser Parser.xpr]]} {source [file join $workspace create_parser.tcl]}
 set saved_project_file [open [file join $workspace Parser Parser.xpr] r]
 set saved_project_xml [read $saved_project_file]
 close $saved_project_file
@@ -44,7 +46,7 @@ if {$execution_mode eq "route-placement"} {
 file mkdir [file join $source_root rtl]
 file mkdir [file join $source_root scripts]
 file mkdir [file join $source_root tools]
-foreach source [glob [file join $workspace rtl *.v]] {file copy $source [file join $source_root rtl [file tail $source]]}
+foreach source [collect_rtl [file join $workspace rtl]] {file copy $source [file join $source_root rtl [file tail $source]]}
 if {[llength $argv]>=6} {
     set override [file normalize [lindex $argv 5]]
     if {[file isdirectory $override]} {set replacements [lsort [glob -nocomplain -types f [file join $override *.v]]]} else {set replacements [list $override]}
@@ -63,7 +65,7 @@ if {[llength $argv]>=6} {
     close $record
     puts "ISOLATED_RTL_OVERRIDE=$override FILES=[llength $replacements] PRIMARY_RTL_UNCHANGED=1"
 }
-foreach relative {scripts/implement_registered_subsystem.tcl scripts/run_registered_subsystem_implementation.ps1 tools/generate_parser_timing_harness.py tools/capture_source_provenance.py} {
+foreach relative {scripts/implement_registered_subsystem.tcl scripts/rtl_sources.tcl scripts/run_registered_subsystem_implementation.ps1 tools/generate_parser_timing_harness.py tools/capture_source_provenance.py} {
     file copy [file join $workspace $relative] [file join $source_root $relative]
 }
 file copy [file join $workspace build ${run_name}-timing-harness.v] [file join $source_root timing_harness.v]

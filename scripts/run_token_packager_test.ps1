@@ -5,7 +5,7 @@ $testBuildPath=Join-Path $workspacePath 'build\token-packager'
 New-Item -ItemType Directory -Path $testBuildPath -Force | Out-Null
 Push-Location $testBuildPath
 try {
-    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\token_packager.v') (Join-Path $workspacePath 'sim\tb_token_packager.sv')
+    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\tokenizer\bpe\token_packager.v') (Join-Path $workspacePath 'sim\tb_token_packager.sv')
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_token_packager -L xpm -L unisims_ver -s token_packager_test --debug typical
     if($LASTEXITCODE -ne 0) { throw 'xelab failed' }

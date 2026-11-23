@@ -6,7 +6,7 @@ foreach($testTop in @('tb_vocabulary_epoch','tb_axis_conversion')) {
     New-Item -ItemType Directory -Path $testBuildPath -Force | Out-Null
     Push-Location $testBuildPath
     try {
-        $sources=Get-ChildItem -LiteralPath (Join-Path $workspacePath 'rtl') -Filter '*.v' | ForEach-Object { $_.FullName }
+        $sources=Get-ChildItem -LiteralPath (Join-Path $workspacePath 'rtl') -Filter '*.v' -Recurse | ForEach-Object { $_.FullName }
         $sources+=Join-Path $workspacePath ('sim\'+$testTop+'.sv')
         & (Join-Path $vivadoBinPath 'xvlog.bat') --sv @sources
         if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }

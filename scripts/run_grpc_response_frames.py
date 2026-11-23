@@ -10,10 +10,13 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 SOURCES = ('rtl/grpc_http2_response_framer.v', 'rtl/axis_byte_unpacker.v', 'rtl/axis_byte_packer.v',
            'sim/cocotb/test_grpc_response_frames.py', 'tools/generate_grpc_response_frame_vectors.py',
-           'scripts/run_grpc_response_frames.py', 'build/grpc-response-frame-fixtures/cases.json')
+           'scripts/run_grpc_response_frames.py', 'build/grpc-response-frame-fixtures/cases.json', 'tools/rtl_paths.py')
 
 
 def sha(path):
@@ -35,7 +38,7 @@ def main():
         target.mkdir(parents=True, exist_ok=False)
         inputs = {}
         for name in SOURCES:
-            source, destination = root / name, target / name
+            source, destination = source_path(root, name), target / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
             inputs[name] = sha(destination)
@@ -59,14 +62,14 @@ def main():
                 shutil.copy2(target / 'build/test' / name, archive / name)
         (archive / 'snapshot.json').write_text(json.dumps(dict(name=args.name, exit_code=completed.returncode,
             current_primary_changed_inputs=[name for name, digest in inputs.items()
-                                            if not (root / name).is_file() or sha(root / name) != digest],
+                                            if not (source_path(root, name)).is_file() or sha(source_path(root, name)) != digest],
             finished_utc=datetime.now(timezone.utc).isoformat()), indent=2) + '\n')
         print('Archived response-frame execution: ' + str(archive), flush=True)
         raise SystemExit(completed.returncode)
     assert root.parent == Path.home() / 'development/hardware/parser/build/grpc-response-frame-tests'
     from cocotb_tools.runner import get_runner
     inputs = json.loads((root / 'inputs.json').read_text())
-    assert all(sha(root / name) == digest for name, digest in inputs.items())
+    assert all(sha(source_path(root, name)) == digest for name, digest in inputs.items())
     build = root / 'build/test'
     build.mkdir(parents=True, exist_ok=True)
     sys.path.insert(0, str(root / 'sim/cocotb'))
@@ -74,7 +77,7 @@ def main():
     record = dict(phase='running', simulator=args.simulator, input_sha256=inputs,
                   started_utc=datetime.now(timezone.utc).isoformat())
     try:
-        runner.build(sources=[root / name for name in SOURCES if name.endswith('.v')],
+        runner.build(sources=[source_path(root, name) for name in SOURCES if name.endswith('.v')],
                      hdl_toplevel='grpc_http2_response_framer', build_dir=build, always=True,
                      build_args=['-Wno-fatal'] if args.simulator == 'verilator' else [], log_file=build / 'build.log')
         runner.test(hdl_toplevel='grpc_http2_response_framer', test_module='test_grpc_response_frames',
@@ -86,7 +89,7 @@ def main():
         assert len(cases) == 1 and not xml.findall('.//failure') and not xml.findall('.//error')
         acceptance = json.loads((build / 'acceptance.json').read_text())
         assert acceptance['phase'] == 'passed'
-        assert all(sha(root / name) == digest for name, digest in inputs.items())
+        assert all(sha(source_path(root, name)) == digest for name, digest in inputs.items())
         record.update(phase='passed', acceptance_sha256=sha(build / 'acceptance.json'),
                       tests=1, failures=0, finished_utc=datetime.now(timezone.utc).isoformat())
     except BaseException as error:

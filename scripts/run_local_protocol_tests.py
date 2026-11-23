@@ -7,6 +7,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -16,7 +19,7 @@ def main():
     parser.add_argument('--case-root', type=Path, default=Path('build/experiments/local-protocol-cases'))
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    folder = root / args.case_root
+    folder = source_path(root, args.case_root)
     generation = json.loads((folder/'generation.json').read_text())
     assert re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*',args.name_prefix)
     assert len(set(args.cases)) == len(args.cases) and all(n in generation['cases'] for n in args.cases)
@@ -25,7 +28,7 @@ def main():
         assert hashlib.sha256(fixture.read_bytes()).hexdigest() == generation['cases'][name]['test_sha256']
         subprocess.run([sys.executable,str(root/'scripts/run_raw_envelope_tests.py'),
             '--name',args.name_prefix+'_'+name,'--profile','duplex',
-            '--rtl-override',str(root/args.rtl_override),
+            '--rtl-override',str(source_path(root, args.rtl_override)),
             '--harness-override',str(root/'build/experiments/local-cancel/sim/cocotb_two_fpga_enveloped_top.sv'),
             '--test-override',str(fixture)],check=True,cwd=root)
 

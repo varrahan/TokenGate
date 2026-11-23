@@ -11,6 +11,9 @@ import subprocess
 import sys
 from datetime import datetime,timezone
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path, source_relative
+
 SUITES={
     "serializer":("serializer-stream","tb_serializer",["rtl/proto_json_serializer.v","rtl/axis_byte_unpacker.v",
         "rtl/axis_byte_packer.v","rtl/json_escape_encoder.v","sim/tb_serializer.sv"]),
@@ -130,7 +133,7 @@ def main():
     parser.add_argument("--xpm-memory",type=Path,default=Path("/mnt/c/AMDDesignTools/2025.2/Vivado/data/ip/xpm/xpm_memory/hdl/xpm_memory.sv"))
     args=parser.parse_args();root=Path(__file__).resolve().parents[1]
     name,top,relative_sources=SUITES[args.suite];build=root/"build"/name;build.mkdir(parents=True,exist_ok=True)
-    sources=[str(root/name)for name in relative_sources]
+    sources=[str(source_path(root, name))for name in relative_sources]
     definitions=[]
     if args.suite in("pretokenizer","ram","trie","external_merge","tokenizer","tokenizer_subsystem","tokenizer_bulk","hpack_table","hpack_headers","http2_connections","http2_transport","http2_hpack","http2_requests","http2_routes","http2_admission","http2_prefill","grpc_messages","schema","decoder","grpc_application","message_replay","grpc_descriptors","grpc_streams","grpc_engine","grpc_parser","grpc_prefill"):
         if args.memory_backend=="xpm":
@@ -156,7 +159,7 @@ def main():
     build_log=build/(log_prefix+"-build.log");sim_log=build/(log_prefix+"-simulation.log")
     report_path=build/(log_prefix+"-report.json")
     report={"suite":args.suite,"simulator":args.simulator,"memory_backend":args.memory_backend,
-            "source_sha256":{str(Path(name).relative_to(root))if Path(name).is_relative_to(root)else name:hashlib.sha256(Path(name).read_bytes()).hexdigest()for name in sources},
+            "source_sha256":{str(source_relative(Path(name), root))if Path(name).is_relative_to(root)else name:hashlib.sha256(Path(name).read_bytes()).hexdigest()for name in [*sources,str(root/'tools/rtl_paths.py')]},
             "fixture_sha256":{path.name:file_hash(path)for path in sorted(build.iterdir())if path.is_file()and path.suffix in(".mem",".txt",".bin",".json")and not path.name.endswith("-report.json")},
             "runner_sha256":file_hash(Path(__file__)),"started_utc":datetime.now(timezone.utc).isoformat(),
             "compile_command":command,"execute_command":execute,"phase":"building"}
@@ -176,7 +179,7 @@ def main():
         path=build/name
         if not path.is_file() or file_hash(path)!=expected_hash:changed.append("fixture:"+name)
     for name,expected_hash in report["source_sha256"].items():
-        path=Path(name)if Path(name).is_absolute()else root/name
+        path=Path(name)if Path(name).is_absolute()else source_path(root, name)
         if not path.is_file() or file_hash(path)!=expected_hash:changed.append("source:"+name)
     passed=result.returncode==0 and any(line.startswith("PASS:")for line in output.splitlines())
     if changed:

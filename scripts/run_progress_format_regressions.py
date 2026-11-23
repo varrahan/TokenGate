@@ -5,6 +5,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();selection=parser.add_mutually_exclusive_group(required=True)
@@ -22,7 +25,7 @@ def main():
             '--name','progress_format_'+name,'--profile',case['profile'],
             '--rtl-override',str(root/'build/experiments/progress-format/rtl'),
             '--harness-override',str(root/'build/experiments/local-cancel/sim/cocotb_two_fpga_enveloped_top.sv'),
-            '--test-override',str(root/case['fixture'])],cwd=root,check=False)
+            '--test-override',str(source_path(root, case['fixture']))],cwd=root,check=False)
         if result.returncode==75:deferred=args.cases[index:];break
         if result.returncode:failed.append(name)
     print(json.dumps(dict(cases=args.cases,failed=failed,deferred_for_disk_headroom=deferred)),flush=True)

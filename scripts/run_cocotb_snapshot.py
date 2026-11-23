@@ -14,6 +14,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path, source_relative
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -33,18 +36,18 @@ def main():
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     input_files = []
     for directory in ('rtl', 'sim', 'tools', 'scripts'):
-        input_files += [p for p in (primary / directory).rglob('*') if p.is_file() and not p.is_symlink()
+        input_files += [p for p in (source_path(primary, directory)).rglob('*') if p.is_file() and not p.is_symlink()
                         and '__pycache__' not in p.parts and p.suffix in ('.v', '.sv', '.py')]
     fixture_folder='rpc-grpc-fixtures' if args.suite in('rpc_grpc','rpc_leased','rpc_durable','rpc_keyed') else 'bidirectional-fixtures'
     input_files += [p for p in (primary / 'build' / fixture_folder).iterdir()
                     if p.is_file() and p.suffix in ('.mem', '.txt', '.json', '.bin')]
-    oracle = primary / ('build/rpc-grpc-fixtures/frame_cases.json' if args.suite in('rpc_grpc','rpc_leased','rpc_durable','rpc_keyed') else 'build/bidirectional-reference-validation.json')
+    oracle = source_path(primary, 'build/rpc-grpc-fixtures/frame_cases.json' if args.suite in('rpc_grpc','rpc_leased','rpc_durable','rpc_keyed') else 'build/bidirectional-reference-validation.json')
     input_files.append(oracle)
     if args.suite in('two_fpga_classified','two_fpga_shutdown'):input_files.append(primary/'build/http2-classifier-fixtures/cases.json')
     if args.suite=='two_fpga_shutdown':input_files.append(primary/'build/http2-shutdown-fixtures/cases.json')
     inputs = {}
     for source in dict.fromkeys(input_files):
-        relative = source.relative_to(primary)
+        relative = source_relative(source, primary)
         destination = snapshot / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
@@ -53,9 +56,9 @@ def main():
     if args.rtl_override:
         candidate = args.rtl_override.resolve()
         assert candidate.is_file() and candidate.suffix == '.v'
-        matches = [p for p in input_files if p.parent == primary / 'rtl' and p.name == candidate.name]
+        matches = [p for p in input_files if p.is_relative_to(primary / 'rtl') and p.name == candidate.name]
         assert len(matches) == 1, 'Override must replace exactly one existing primary RTL file'
-        original = matches[0]; relative = original.relative_to(primary)
+        original = matches[0]; relative = source_relative(original, primary)
         override = dict(path=str(candidate), destination=relative.as_posix(),
                         original_sha256=sha(original), candidate_sha256=sha(candidate))
         shutil.copy2(candidate, snapshot / relative)
@@ -82,7 +85,7 @@ def main():
         destination = target / 'execution-sources' / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(snapshot / name, destination)
-    shutil.copy2(snapshot / oracle.relative_to(primary), target / 'native-reference.json')
+    shutil.copy2(snapshot / source_relative(oracle, primary), target / 'native-reference.json')
     support_sources=('scripts/run_cocotb_snapshot.py',) if args.suite in('rpc_grpc','rpc_leased','rpc_durable','rpc_keyed') else ('tools/verify_http2_prefill_references.py','scripts/run_cocotb_snapshot.py')
     for relative in support_sources:
         assert sha(snapshot / relative) == inputs[relative]
@@ -92,7 +95,7 @@ def main():
     provenance.update(phase='snapshot_run_archived', runner_exit_code=result.returncode,
         execution_phase=report['phase'], execution_report_sha256=sha(target / 'report.json'),
         current_primary_changed_inputs=[name for name, digest in {**report['source_sha256'], **report['fixture_sha256']}.items()
-                                        if not (primary / name).is_file() or sha(primary / name) != digest],
+                                        if not (source_path(primary, name)).is_file() or sha(source_path(primary, name)) != digest],
         finished_utc=datetime.now(timezone.utc).isoformat())
     (target / 'snapshot.json').write_text(json.dumps(provenance, indent=2) + '\n')
     print(f'Archived {args.suite}/{args.name}: {report["phase"]}; current-primary differences: '

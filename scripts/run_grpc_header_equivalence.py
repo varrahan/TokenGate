@@ -9,6 +9,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from rtl_paths import source_path
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--name');parser.add_argument('--gate',type=Path)
@@ -18,9 +21,9 @@ def main():
         assert args.name and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*',args.name)
         approved=Path.home()/'development/hardware/parser';assert approved.is_dir()and approved!=root
         target=approved/'build/grpc-header-equivalence'/args.name;target.mkdir(parents=True,exist_ok=False)
-        gold=args.gold or root/'rtl/grpc_response_headers.v';gate=args.gate or root/'build/experiments/compact-grpc-headers/rtl/grpc_response_headers.v'
+        gold=args.gold or source_path(root, 'rtl/grpc_response_headers.v');gate=args.gate or root/'build/experiments/compact-grpc-headers/rtl/grpc_response_headers.v'
         sources={'rtl/gold_input.v':gold,'rtl/gate_input.v':gate}
-        for n in('scripts/run_grpc_header_equivalence.py','tools/generate_bidirectional_application.py','tools/generate_two_fpga_application.py'):sources[n]=root/n
+        for n in('scripts/run_grpc_header_equivalence.py','tools/generate_bidirectional_application.py','tools/generate_two_fpga_application.py', 'tools/rtl_paths.py'):sources[n]=source_path(root, n)
         inputs={}
         for n,p in sources.items():
             destination=target/n;destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,destination);inputs[n]=sha(destination)
@@ -38,10 +41,10 @@ def main():
             original_production_source=str(gold.resolve()),isolated_gate_source=str(gate.resolve())),indent=2)+'\n')
         print('Archived actual RTL equivalence: '+str(archive),flush=True);raise SystemExit(result.returncode)
     assert root.parent==Path.home()/'development/hardware/parser/build/grpc-header-equivalence'
-    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(root/n)==h for n,h in inputs.items())
+    inputs=json.loads((root/'inputs.json').read_text());assert all(sha(source_path(root, n))==h for n,h in inputs.items())
     sys.path.insert(0,str(root/'tools'));from generate_bidirectional_application import ports
     from generate_two_fpga_application import add_ports,rename
-    original=(root/'rtl/gold_input.v').read_text();gate=(root/'rtl/gate_input.v').read_text()
+    original=(source_path(root, 'rtl/gold_input.v')).read_text();gate=(source_path(root, 'rtl/gate_input.v')).read_text()
     public=ports(original,'grpc_response_headers');assert public==ports(gate,'grpc_response_headers')
     helpers=[('output','[2:0]','formal_state'),('output','[1:0]','formal_encoding'),('output','[31:0]','formal_status_code')]
     folder=root/'build/proof';folder.mkdir(parents=True,exist_ok=True)
@@ -80,7 +83,7 @@ def main():
         with(folder/'yosys.log').open('w')as output:result=subprocess.run(['yosys','-T','-s','proof.ys'],cwd=folder,stdout=output,stderr=subprocess.STDOUT,check=False)
         report['yosys_exit_code']=result.returncode
         assert result.returncode==0 and 'Induction step proven: SUCCESS!'in(folder/'yosys.log').read_text()
-        assert all(sha(root/n)==h for n,h in inputs.items())
+        assert all(sha(source_path(root, n))==h for n,h in inputs.items())
         report.update(phase='passed',unbounded_post_reset_equivalence_proven=True,physical_timing_verified=False,full_system_complete=False)
     except BaseException as error:report.update(phase='failed',error=str(error));raise
     finally:

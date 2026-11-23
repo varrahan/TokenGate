@@ -2,7 +2,7 @@ param([ValidateSet('icarus','verilator')][string]$Simulator='icarus')
 $ErrorActionPreference='Stop'
 $workspacePath=Split-Path -Parent $PSScriptRoot
 $referencePython=Join-Path $workspacePath '.venv312\Scripts\python.exe'
-& $referencePython (Join-Path $workspacePath 'tools\generate_bidirectional_application.py') --rtl (Join-Path $workspacePath 'rtl\http2_bidirectional_application.v') --harness (Join-Path $workspacePath 'sim\cocotb_bidirectional_application_top.sv')
+& $referencePython (Join-Path $workspacePath 'tools\generate_bidirectional_application.py') --rtl (Join-Path $workspacePath 'rtl\parser\top\http2_bidirectional_application.v') --harness (Join-Path $workspacePath 'sim\cocotb_bidirectional_application_top.sv')
 if($LASTEXITCODE -ne 0) { throw 'Joint application interface generation failed' }
 & $referencePython (Join-Path $workspacePath 'tools\generate_bidirectional_vectors.py') --output (Join-Path $workspacePath 'build\bidirectional-fixtures')
 if($LASTEXITCODE -ne 0) { throw 'Joint native reference generation failed' }

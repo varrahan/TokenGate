@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Path $testBuildPath -Force | Out-Null
 if($LASTEXITCODE -ne 0) { throw 'UTF-8 fixtures failed' }
 Push-Location $testBuildPath
 try {
-    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\utf8_codepoint_reader.v') (Join-Path $workspacePath 'sim\tb_utf8_codepoint_reader.sv')
+    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\tokenizer\unicode\utf8_codepoint_reader.v') (Join-Path $workspacePath 'sim\tb_utf8_codepoint_reader.sv')
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_utf8_codepoint_reader -s codepoint_test --debug typical
     if($LASTEXITCODE -ne 0) { throw 'xelab failed' }

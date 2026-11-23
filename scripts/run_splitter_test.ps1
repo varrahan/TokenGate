@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Path $testBuildPath -Force | Out-Null
 if($LASTEXITCODE -ne 0) { throw 'Splitter references failed' }
 Push-Location $testBuildPath
 try {
-    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\regex_splitter_fsm.v') (Join-Path $workspacePath 'sim\tb_regex_splitter.sv')
+    & (Join-Path $vivadoBinPath 'xvlog.bat') --sv (Join-Path $workspacePath 'rtl\tokenizer\bpe\regex_splitter_fsm.v') (Join-Path $workspacePath 'sim\tb_regex_splitter.sv')
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
     & (Join-Path $vivadoBinPath 'xelab.bat') tb_regex_splitter -s splitter_test --debug typical
     if($LASTEXITCODE -ne 0) { throw 'xelab failed' }

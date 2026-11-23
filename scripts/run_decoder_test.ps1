@@ -6,7 +6,7 @@ $testBuildPath=Join-Path $workspacePath 'build\decoder'
 if($LASTEXITCODE -ne 0) { throw 'Decoder reference generation failed' }
 Push-Location $testBuildPath
 try {
-    $sources=Get-ChildItem -LiteralPath (Join-Path $workspacePath 'rtl') -Filter '*.v' | ForEach-Object { $_.FullName }
+    $sources=Get-ChildItem -LiteralPath (Join-Path $workspacePath 'rtl') -Filter '*.v' -Recurse | ForEach-Object { $_.FullName }
     $sources+=Join-Path $workspacePath 'sim\tb_decoder.sv'
     & (Join-Path $vivadoBinPath 'xvlog.bat') --sv @sources
     if($LASTEXITCODE -ne 0) { throw 'xvlog failed' }
